@@ -75,6 +75,25 @@ tr.inactive td{color:var(--text3);background:#faf9f7}
 .badge-blue{background:var(--blue-light);color:var(--blue)}
 .badge-red{background:var(--red-light);color:var(--red)}
 .badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.badge-kaigo-yoyo1{background:#e6f4ec;color:#2d7a4f}
+.badge-kaigo-yoyo2{background:#d4eedd;color:#1d6040}
+.badge-kaigo-1{background:#e8f0fb;color:#1a5fa8}
+.badge-kaigo-2{background:#d4e4f7;color:#0d3f73}
+.badge-kaigo-3{background:#fdf0d8;color:#8a5a0a}
+.badge-kaigo-4{background:#fce4e4;color:#a32d2d}
+.badge-kaigo-5{background:#f8cece;color:#7a1f1f}
+.badge-kaigo-shinsei{background:#f0e8fb;color:#5a2d8a}
+.badge-kaigo-jigyou{background:#e8f4fb;color:#1a7a8a}
+
+/* 行ハイライト：左端カラーライン */
+td:first-child{position:relative}
+.row-lines{position:absolute;left:0;top:0;bottom:0;display:flex;gap:2px;padding:2px 0}
+.row-line{width:4px;height:100%;border-radius:2px}
+.line-red{background:var(--red)}
+.line-blue{background:var(--blue)}
+.line-yellow{background:#d4920a}
+.line-green{background:#2d7a4f}
+.line-orange{background:#c05a0a}
 .action-cell{display:flex;gap:4px}
 .icon-btn{border:none;background:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;display:flex;align-items:center}
 .icon-btn:hover{color:var(--text);background:var(--surface2)}
@@ -644,6 +663,45 @@ function getUpdateBadge(s){
 }
 const KAIGO_ORDER={'要介護5':0,'要介護4':1,'要介護3':2,'要介護2':3,'要介護1':4,'要支援2':5,'要支援1':6,'事業対象者':7,'申請中':8,'':9};
 
+function getKaigoBadgeClass(kaigo){
+  if(!kaigo)return'badge-gray';
+  if(kaigo==='要支援1')return'badge-kaigo-yoyo1';
+  if(kaigo==='要支援2')return'badge-kaigo-yoyo2';
+  if(kaigo==='要介護1')return'badge-kaigo-1';
+  if(kaigo==='要介護2')return'badge-kaigo-2';
+  if(kaigo==='要介護3')return'badge-kaigo-3';
+  if(kaigo==='要介護4')return'badge-kaigo-4';
+  if(kaigo==='要介護5')return'badge-kaigo-5';
+  if(kaigo==='申請中')return'badge-kaigo-shinsei';
+  if(kaigo==='事業対象者')return'badge-kaigo-jigyou';
+  return'badge-gray';
+}
+
+function buildRowLines(u){
+  const lines=[];
+  // 入院中
+  if(u.hospitalStatus==='入院中')lines.push('line-orange');
+  // 認定更新申請
+  if(u.updateApply){
+    const[y,m]=u.updateApply.split('-').map(Number);
+    const diff=(y*12+m)-(currentYear*12+currentMonth);
+    if(diff<-1||new Date(u.certEnd||'9999')<new Date(new Date().toDateString()))lines.push('line-red');
+    else if(diff===-1)lines.push('line-red');
+    else if(diff===0)lines.push('line-blue');
+    else if(diff===1)lines.push('line-yellow');
+  }
+  // 短期・長期目標
+  const hasPlanAlert=['planShort','planLong'].some(f=>{
+    if(!u[f])return false;
+    const[y,m]=u[f].split('-').map(Number);
+    const diff=(y*12+m)-(currentYear*12+currentMonth);
+    return diff===0||diff===1||diff===-1;
+  });
+  if(hasPlanAlert)lines.push('line-green');
+  if(!lines.length)return'';
+  return`<div class="row-lines">${lines.map(l=>`<div class="row-line ${l}"></div>`).join('')}</div>`;
+}
+
 // ══════════════════════════════════════════
 // 月ナビ
 // ══════════════════════════════════════════
@@ -818,14 +876,15 @@ function renderTable(){
       meetingDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
     }
     return`<tr class="${u.inactive?'inactive':u.hospitalStatus==='入院中'?'hospitalized':''}">
-      <td>
+      <td style="padding-left:${buildRowLines(u)?'18px':'12px'}">
+        ${buildRowLines(u)}
         <strong style="font-size:15px">${u.name||'-'}</strong>
         ${u.hospitalStatus==='入院中'?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
         ${u.birth?` <span style="font-size:12px;color:var(--text3)">(${calcAge(u.birth)}歳)</span>`:''}
         ${u.kana?`<br><span style="font-size:11px;color:var(--text3)">${u.kana}</span>`:''}
       </td>
       <td>
-        <span class="badge badge-gray">${u.kaigo||'-'}</span>
+        <span class="badge ${getKaigoBadgeClass(u.kaigo)}">${u.kaigo||'-'}</span>
         ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
       </td>
       <td style="font-size:13px;line-height:1.8">

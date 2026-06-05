@@ -82,14 +82,15 @@ tr.inactive td{color:var(--text3);background:#faf9f7}
 .badge-kaigo-shinsei{background:#f0e8fb;color:#5a2d8a}
 .badge-kaigo-jigyou{background:#e6f4ec;color:#2d7a4f}
 
-/* 行ハイライト：左端カラーライン */
-td:first-child{position:relative}
-.row-lines{position:absolute;left:0;top:0;bottom:0;display:flex;gap:2px;padding:2px 0}
-.row-line{width:4px;height:100%;border-radius:2px}
-.line-red{background:var(--red)}
-.line-blue{background:var(--blue)}
-.line-yellow{background:#d4920a}
-.line-green{background:#2d7a4f}
+/* 行ハイライト背景色 */
+tr.hl-red td{background:#fdf0f0}
+tr.hl-red:hover td{background:#fae4e4}
+tr.hl-blue td{background:#f0f5fc}
+tr.hl-blue:hover td{background:#e4eef8}
+tr.hl-yellow td{background:#fdf8ed}
+tr.hl-yellow:hover td{background:#faf0d8}
+tr.hl-green td{background:#f0f8f2}
+tr.hl-green:hover td{background:#e4f2e8}
 .action-cell{display:flex;gap:4px}
 .icon-btn{border:none;background:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;display:flex;align-items:center}
 .icon-btn:hover{color:var(--text);background:var(--surface2)}
@@ -719,26 +720,23 @@ function getKaigoBadgeClass(kaigo){
   return'badge-gray';
 }
 
-function buildRowLines(u){
-  const lines=[];
-  // 認定更新申請
+function getRowHlClass(u){
+  // 優先順位：期限切れ・先月 > 今月 > 来月 > プラン更新
   if(u.updateApply){
     const[y,m]=u.updateApply.split('-').map(Number);
     const diff=(y*12+m)-(currentYear*12+currentMonth);
-    if(diff<=-1)lines.push('line-red');
-    else if(diff===0)lines.push('line-blue');
-    else if(diff===1)lines.push('line-yellow');
+    if(diff<=-1)return'hl-red';
+    if(diff===0)return'hl-blue';
+    if(diff===1)return'hl-yellow';
   }
-  // 短期・長期目標
-  const hasPlanAlert=['planShort','planLong'].some(f=>{
+  const hasPlan=['planShort','planLong'].some(f=>{
     if(!u[f])return false;
     const[y,m]=u[f].split('-').map(Number);
     const diff=(y*12+m)-(currentYear*12+currentMonth);
-    return diff===0||diff===1||diff===-1;
+    return diff>=-1&&diff<=1;
   });
-  if(hasPlanAlert)lines.push('line-green');
-  if(!lines.length)return'';
-  return`<div class="row-lines">${lines.map(l=>`<div class="row-line ${l}"></div>`).join('')}</div>`;
+  if(hasPlan)return'hl-green';
+  return'';
 }
 
 // ══════════════════════════════════════════
@@ -953,9 +951,8 @@ function renderTable(){
       const d=new Date(mon.monitoringDate);
       monitoringDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
     }
-    return`<tr class="${u.inactive?'inactive':u.hospitalStatus==='入院中'?'hospitalized':''}">
-      <td style="padding-left:${buildRowLines(u)?'18px':'12px'}">
-        ${buildRowLines(u)}
+    return`<tr class="${u.inactive?'inactive':getRowHlClass(u)}">
+      <td>
         <strong style="font-size:15px">${u.name||'-'}</strong>
         ${u.hospitalStatus==='入院中'?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
         ${u.birth?` <span style="font-size:12px;color:var(--text3)">(${calcAge(u.birth)}歳)</span>`:''}

@@ -75,15 +75,11 @@ tr.inactive td{color:var(--text3);background:#faf9f7}
 .badge-blue{background:var(--blue-light);color:var(--blue)}
 .badge-red{background:var(--red-light);color:var(--red)}
 .badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
-.badge-kaigo-yoyo1{background:#e6f4ec;color:#2d7a4f}
-.badge-kaigo-yoyo2{background:#d4eedd;color:#1d6040}
-.badge-kaigo-1{background:#e8f0fb;color:#1a5fa8}
-.badge-kaigo-2{background:#d4e4f7;color:#0d3f73}
+.badge-kaigo-yoyo{background:#e6f4ec;color:#2d7a4f}
+.badge-kaigo-kaigo{background:#e8f0fb;color:#1a5fa8}
 .badge-kaigo-3{background:#fdf0d8;color:#8a5a0a}
-.badge-kaigo-4{background:#fce4e4;color:#a32d2d}
-.badge-kaigo-5{background:#f8cece;color:#7a1f1f}
 .badge-kaigo-shinsei{background:#f0e8fb;color:#5a2d8a}
-.badge-kaigo-jigyou{background:#e8f4fb;color:#1a7a8a}
+.badge-kaigo-jigyou{background:#e6f4ec;color:#2d7a4f}
 
 /* 行ハイライト：左端カラーライン */
 td:first-child{position:relative}
@@ -93,7 +89,6 @@ td:first-child{position:relative}
 .line-blue{background:var(--blue)}
 .line-yellow{background:#d4920a}
 .line-green{background:#2d7a4f}
-.line-orange{background:#c05a0a}
 .action-cell{display:flex;gap:4px}
 .icon-btn{border:none;background:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;display:flex;align-items:center}
 .icon-btn:hover{color:var(--text);background:var(--surface2)}
@@ -182,8 +177,7 @@ td:first-child{position:relative}
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1916;color:#fff;padding:11px 20px;border-radius:var(--r);font-size:14px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 .badge-orange{background:#fde8d0;color:#8a3a0a}
-tr.hospitalized td{background:#fff8f0}
-tr.hospitalized:hover td{background:#fef3e6}
+/* 入院中はバッジのみ表示 */
 </style>
 </head>
 <body>
@@ -289,8 +283,20 @@ tr.hospitalized:hover td{background:#fef3e6}
   <div class="form-grid">
     <div class="form-row"><label>氏名 *</label><input id="f-name" placeholder="山田 太郎"></div>
     <div class="form-row"><label>氏名（カナ）※並び順に使用</label><input id="f-kana" placeholder="ヤマダ タロウ"></div>
-    <div class="form-row"><label>生年月日</label><div class="date-input-wrap" id="wrap-birth"></div></div>
-    <div class="form-row"><label>性別</label><select id="f-sex"><option value="">-</option><option>男性</option><option>女性</option></select></div>
+    <div class="form-row">
+      <label>生年月日（和暦）</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="f-birth-era" onchange="calcAgeDisplay()" style="padding:8px 6px;border:1px solid var(--border2);border-radius:var(--r);font-size:14px;background:var(--surface);color:var(--text);font-family:inherit">
+          <option value="">元号</option>
+          <option value="showa">昭和</option>
+          <option value="heisei">平成</option>
+          <option value="reiwa">令和</option>
+        </select>
+        <input id="f-birth-year" type="number" min="1" max="64" placeholder="年" oninput="calcAgeDisplay()" style="width:70px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:14px">
+        <span style="font-size:13px;color:var(--text2)">年</span>
+        <span id="age-display" style="font-size:13px;color:var(--blue);font-weight:700;min-width:50px"></span>
+      </div>
+    </div>
     <div class="form-row"><label>要介護度</label>
       <select id="f-kaigo">
         <option value="">-</option><option>要介護1</option><option>要介護2</option><option>要介護3</option>
@@ -300,9 +306,7 @@ tr.hospitalized:hover td{background:#fef3e6}
     </div>
     <div class="form-row"><label>負担割合</label><select id="f-futan"><option value="">-</option><option>1割</option><option>2割</option><option>3割</option><option>みなし2号</option><option>生活保護</option></select></div>
     <div class="form-row"><label>被保険者番号</label><input id="f-hoken"></div>
-    <div class="form-row"><label>連絡先</label><input id="f-tel" placeholder="090-XXXX-XXXX"></div>
   </div>
-  <div class="form-row" style="margin-top:11px"><label>住所</label><input id="f-addr"></div>
 
   <div class="form-section">認定情報</div>
   <div class="form-grid">
@@ -315,8 +319,6 @@ tr.hospitalized:hover td{background:#fef3e6}
       <label>更新申請月<span style="font-size:11px;color:var(--text3);margin-left:4px">（自動：終了1ヶ月前）</span></label>
       <div id="disp-update-apply" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;background:var(--surface2);color:var(--text2);min-height:38px">-</div>
     </div>
-    <div class="form-row"><label>契約日</label><div class="date-input-wrap" id="wrap-contract"></div></div>
-    <div class="form-row"><label>終了日</label><div class="date-input-wrap" id="wrap-end"></div></div>
   </div>
 
   <div class="form-section">プラン情報（短期・長期目標）</div>
@@ -617,20 +619,61 @@ function buildDateField(wrapId){
   el.appendChild(btn);
 }
 
+function calcAgeDisplay(){
+  const era=document.getElementById('f-birth-era').value;
+  const yr=parseInt(document.getElementById('f-birth-year').value);
+  const disp=document.getElementById('age-display');
+  if(!era||!yr){disp.textContent='';return;}
+  let wy;
+  if(era==='showa')wy=1925+yr;
+  else if(era==='heisei')wy=1988+yr;
+  else if(era==='reiwa')wy=2018+yr;
+  else{disp.textContent='';return;}
+  const age=new Date().getFullYear()-wy;
+  disp.textContent='約'+age+'歳';
+}
+function getBirthIso(){
+  const era=document.getElementById('f-birth-era').value;
+  const yr=parseInt(document.getElementById('f-birth-year').value);
+  if(!era||!yr)return'';
+  let wy;
+  if(era==='showa')wy=1925+yr;
+  else if(era==='heisei')wy=1988+yr;
+  else if(era==='reiwa')wy=2018+yr;
+  else return'';
+  return`${wy}-01-01`;
+}
+function setBirthFromIso(iso){
+  if(!iso){
+    document.getElementById('f-birth-era').value='';
+    document.getElementById('f-birth-year').value='';
+    document.getElementById('age-display').textContent='';
+    return;
+  }
+  const y=parseInt(iso.slice(0,4));
+  let era,n;
+  if(y>=2019){era='reiwa';n=y-2018;}
+  else if(y>=1989){era='heisei';n=y-1988;}
+  else{era='showa';n=y-1925;}
+  document.getElementById('f-birth-era').value=era;
+  document.getElementById('f-birth-year').value=n;
+  calcAgeDisplay();
+}
+
 function initAllDateFields(){
   buildPopupYearSelect();
   buildPopupMonthSelect();
-  ['wrap-birth','wrap-cert-start','wrap-cert-end','wrap-contract','wrap-end',
-   'wrap-meeting-date','wrap-monitoring-date','wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
+  ['wrap-cert-start','wrap-cert-end','wrap-meeting-date','wrap-monitoring-date',
+   'wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
   ['wrap-plan-short','wrap-plan-long'].forEach(buildDateField);
 }
 function clearAllDateFields(){
-  ['wrap-birth','wrap-cert-start','wrap-cert-end','wrap-contract','wrap-end',
-   'wrap-meeting-date','wrap-monitoring-date','wrap-plan-short','wrap-plan-long',
-   'wrap-hospital-in','wrap-hospital-out']
+  ['wrap-cert-start','wrap-cert-end','wrap-meeting-date','wrap-monitoring-date',
+   'wrap-plan-short','wrap-plan-long','wrap-hospital-in','wrap-hospital-out']
     .forEach(id=>setFieldIso(id,''));
   document.getElementById('disp-update-apply').textContent='-';
   document.getElementById('disp-update-apply').dataset.iso='';
+  setBirthFromIso('');
 }
 
 // ══════════════════════════════════════════
@@ -665,28 +708,21 @@ const KAIGO_ORDER={'要介護5':0,'要介護4':1,'要介護3':2,'要介護2':3,'
 
 function getKaigoBadgeClass(kaigo){
   if(!kaigo)return'badge-gray';
-  if(kaigo==='要支援1')return'badge-kaigo-yoyo1';
-  if(kaigo==='要支援2')return'badge-kaigo-yoyo2';
-  if(kaigo==='要介護1')return'badge-kaigo-1';
-  if(kaigo==='要介護2')return'badge-kaigo-2';
+  if(kaigo==='要支援1'||kaigo==='要支援2'||kaigo==='事業対象者')return'badge-kaigo-yoyo';
+  if(kaigo==='要介護1'||kaigo==='要介護2')return'badge-kaigo-kaigo';
   if(kaigo==='要介護3')return'badge-kaigo-3';
-  if(kaigo==='要介護4')return'badge-kaigo-4';
-  if(kaigo==='要介護5')return'badge-kaigo-5';
+  if(kaigo==='要介護4'||kaigo==='要介護5')return'badge-red';
   if(kaigo==='申請中')return'badge-kaigo-shinsei';
-  if(kaigo==='事業対象者')return'badge-kaigo-jigyou';
   return'badge-gray';
 }
 
 function buildRowLines(u){
   const lines=[];
-  // 入院中
-  if(u.hospitalStatus==='入院中')lines.push('line-orange');
   // 認定更新申請
   if(u.updateApply){
     const[y,m]=u.updateApply.split('-').map(Number);
     const diff=(y*12+m)-(currentYear*12+currentMonth);
-    if(diff<-1||new Date(u.certEnd||'9999')<new Date(new Date().toDateString()))lines.push('line-red');
-    else if(diff===-1)lines.push('line-red');
+    if(diff<=-1)lines.push('line-red');
     else if(diff===0)lines.push('line-blue');
     else if(diff===1)lines.push('line-yellow');
   }
@@ -759,23 +795,46 @@ function getTimingGroups(users,field){
   }):[];
   return{expired:certExpired,lastMonth,thisMonth,nextMonth};
 }
-function summaryCardRows(groups){
+function getSummaryChecked(){
+  try{return JSON.parse(localStorage.getItem('cm_summary_checked_'+currentKey())||'{}')}catch{return{}}
+}
+function saveSummaryChecked(d){localStorage.setItem('cm_summary_checked_'+currentKey(),JSON.stringify(d))}
+function toggleSummaryCheck(uid,field){
+  const d=getSummaryChecked();
+  const key=uid+'_'+field;
+  d[key]=!d[key];
+  saveSummaryChecked(d);
+  renderSummary();
+}
+
+function nameCheckList(users,field){
+  const checked=getSummaryChecked();
+  return users.map(u=>{
+    const key=u.id+'_'+field;
+    const done=checked[key];
+    return`<span onclick="toggleSummaryCheck('${u.id}','${field}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin:1px 4px 1px 0;font-size:11px;${done?'text-decoration:line-through;color:var(--text3)':'color:var(--text2)'}">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:3px;border:1px solid ${done?'var(--blue)':'var(--border2)'};background:${done?'var(--blue)':'#fff'};flex-shrink:0">
+        ${done?'<svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="2 6 5 9 10 3"/></svg>':''}
+      </span>${u.name}</span>`;
+  }).join('');
+}
+function summaryCardRows(groups,field='updateApply'){
   const rows=[];
   if(groups.expired&&groups.expired.length){
     rows.push(`<div class="scard-row alert-red"><span>⚠ 期限切れ</span><strong>${groups.expired.length}件</strong></div>`);
-    rows.push(`<div class="scard-row-names">${groups.expired.map(u=>u.name).join('、')}</div>`);
+    rows.push(`<div class="scard-row-names" style="white-space:normal">${nameCheckList(groups.expired,field)}</div>`);
   }
   if(groups.lastMonth.length){
     rows.push(`<div class="scard-row alert-red"><span>先月（未処理）</span><strong>${groups.lastMonth.length}件</strong></div>`);
-    rows.push(`<div class="scard-row-names">${groups.lastMonth.map(u=>u.name).join('、')}</div>`);
+    rows.push(`<div class="scard-row-names" style="white-space:normal">${nameCheckList(groups.lastMonth,field)}</div>`);
   }
   if(groups.thisMonth.length){
     rows.push(`<div class="scard-row alert-blue"><span>今月</span><strong>${groups.thisMonth.length}件</strong></div>`);
-    rows.push(`<div class="scard-row-names">${groups.thisMonth.map(u=>u.name).join('、')}</div>`);
+    rows.push(`<div class="scard-row-names" style="white-space:normal">${nameCheckList(groups.thisMonth,field)}</div>`);
   }
   if(groups.nextMonth.length){
     rows.push(`<div class="scard-row alert-yellow"><span>来月</span><strong>${groups.nextMonth.length}件</strong></div>`);
-    rows.push(`<div class="scard-row-names">${groups.nextMonth.map(u=>u.name).join('、')}</div>`);
+    rows.push(`<div class="scard-row-names" style="white-space:normal">${nameCheckList(groups.nextMonth,field)}</div>`);
   }
   if(!rows.length)rows.push(`<div class="scard-row alert-none">対象者なし</div>`);
   return`<div class="scard-rows">${rows.join('')}</div>`;
@@ -822,12 +881,12 @@ function renderSummary(){
     <div class="scard">
       <div class="scard-label">認定更新申請</div>
       <div class="scard-val">${applyTotal}<span style="font-size:15px;font-weight:400">件</span></div>
-      ${summaryCardRows(applyGroups)}
+      ${summaryCardRows(applyGroups,'updateApply')}
     </div>
     <div class="scard">
       <div class="scard-label">プラン更新（短期・長期）</div>
       <div class="scard-val">${planTotal}<span style="font-size:15px;font-weight:400">件</span></div>
-      ${summaryCardRows(planGroups)}
+      ${summaryCardRows(planGroups,'planShort')}
     </div>
     <div class="scard">
       <div class="scard-label">モニタリング</div>
@@ -875,6 +934,11 @@ function renderTable(){
       const d=new Date(mon.meetingDate);
       meetingDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
     }
+    let monitoringDisp='-';
+    if(mon.monitoringDate){
+      const d=new Date(mon.monitoringDate);
+      monitoringDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
+    }
     return`<tr class="${u.inactive?'inactive':u.hospitalStatus==='入院中'?'hospitalized':''}">
       <td style="padding-left:${buildRowLines(u)?'18px':'12px'}">
         ${buildRowLines(u)}
@@ -897,6 +961,7 @@ function renderTable(){
       </td>
       <td style="font-size:13px">${meetingDisp}</td>
       <td>
+        ${monitoringDisp!=='-'?`<div style="font-size:12px;color:var(--text2);margin-bottom:3px">${monitoringDisp}</div>`:''}
         <select class="inline-select" onchange="setMonthField('${u.id}','monitoringStatus',this.value)">
           <option value="" ${!mon.monitoringStatus?'selected':''}>-</option>
           <option value="未訪問" ${mon.monitoringStatus==='未訪問'?'selected':''}>未訪問</option>
@@ -981,7 +1046,7 @@ function deleteUser(id){
 // ══════════════════════════════════════════
 function openModal(id){
   editingId=id||null;
-  ['f-name','f-kana','f-sex','f-kaigo','f-futan','f-hoken','f-tel','f-addr','f-monitoring-status','f-memo','f-hospital-status','f-hospital-name']
+  ['f-name','f-kana','f-kaigo','f-futan','f-hoken','f-monitoring-status','f-memo','f-hospital-status','f-hospital-name']
     .forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';})
   clearAllDateFields();
   if(id){
@@ -990,18 +1055,13 @@ function openModal(id){
     if(u){
       document.getElementById('f-name').value=u.name||'';
       document.getElementById('f-kana').value=u.kana||'';
-      document.getElementById('f-sex').value=u.sex||'';
       document.getElementById('f-kaigo').value=u.kaigo||'';
       document.getElementById('f-futan').value=u.futan||'';
       document.getElementById('f-hoken').value=u.hoken||'';
-      document.getElementById('f-tel').value=u.tel||'';
-      document.getElementById('f-addr').value=u.addr||'';
       document.getElementById('f-memo').value=u.memo||'';
-      setFieldIso('wrap-birth',u.birth||'');
+      setBirthFromIso(u.birth||'');
       setFieldIso('wrap-cert-start',u.certStart||'');
       setFieldIso('wrap-cert-end',u.certEnd||'');
-      setFieldIso('wrap-contract',u.contract||'');
-      setFieldIso('wrap-end',u.endDate||'');
       setFieldIso('wrap-plan-short',u.planShort||'');
       setFieldIso('wrap-plan-long',u.planLong||'');
       document.getElementById('f-hospital-status').value=u.hospitalStatus||'';
@@ -1033,10 +1093,9 @@ function saveUser(){
   const dispUA=document.getElementById('disp-update-apply');
   const userData={
     name,kana:document.getElementById('f-kana').value.trim(),
-    birth:getFieldIso('wrap-birth'),sex:document.getElementById('f-sex').value,
+    birth:getBirthIso(),
     kaigo:document.getElementById('f-kaigo').value,futan:document.getElementById('f-futan').value,
-    hoken:document.getElementById('f-hoken').value,tel:document.getElementById('f-tel').value,
-    addr:document.getElementById('f-addr').value,
+    hoken:document.getElementById('f-hoken').value,
     certStart:getFieldIso('wrap-cert-start'),certEnd:getFieldIso('wrap-cert-end'),
     updateApply:dispUA.dataset.iso||'',
     planShort:getFieldIso('wrap-plan-short'),planLong:getFieldIso('wrap-plan-long'),
@@ -1044,7 +1103,6 @@ function saveUser(){
     hospitalName:document.getElementById('f-hospital-name').value,
     hospitalIn:getFieldIso('wrap-hospital-in'),
     hospitalOut:getFieldIso('wrap-hospital-out'),
-    contract:getFieldIso('wrap-contract'),endDate:getFieldIso('wrap-end'),
     memo:document.getElementById('f-memo').value,
   };
   const monthData={

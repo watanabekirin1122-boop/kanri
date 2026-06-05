@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>利用者管理表</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f7f4;--surface:#fff;--surface2:#f2f1ee;
+  --border:#e0ddd8;--border2:#ccc9c3;
+  --text:#1a1916;--text2:#5a5855;--text3:#9e9b96;
+  --blue:#1a5fa8;--blue-light:#e8f0fb;--blue-dark:#0d3f73;
+  --amber:#8a5a0a;--amber-light:#fdf0d8;
+  --red:#a32d2d;--red-light:#fceaea;
+  --green:#2d7a4f;--green-light:#e6f4ec;
+  --r:8px;--rl:12px;
+}
+body{font-family:'Noto Sans JP',sans-serif;font-size:15px;color:var(--text);background:var(--bg);min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.topbar-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:7px}
+.topbar-title svg{color:var(--blue)}
+.month-nav{display:flex;align-items:center;gap:6px;margin-left:auto}
+.month-nav button{width:32px;height:32px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);cursor:pointer;color:var(--text2);font-size:20px;display:flex;align-items:center;justify-content:center}
+.month-nav button:hover{background:var(--surface2)}
+.month-label{font-size:17px;font-weight:700;min-width:120px;text-align:center}
+.btn{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:7px 14px;font-size:14px;font-family:inherit;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:hover{background:var(--surface2);color:var(--text)}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+.btn-primary:hover{background:var(--blue-dark)}
+
+/* SUMMARY */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px}
+@media(max-width:700px){.summary{grid-template-columns:repeat(2,1fr)}}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:13px 15px}
+.scard-label{font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;letter-spacing:.04em}
+.scard-val{font-size:24px;font-weight:700;line-height:1;margin-bottom:8px}
+.scard-rows{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.scard-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:3px 6px;border-radius:5px}
+.scard-row.alert-red{background:var(--red-light);color:var(--red)}
+.scard-row.alert-yellow{background:var(--amber-light);color:var(--amber)}
+.scard-row.alert-blue{background:var(--blue-light);color:var(--blue)}
+.scard-row.alert-none{color:var(--text2)}
+.scard-row-names{font-size:11px;color:var(--text3);padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* TABS */
+.main-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 20px;background:var(--surface)}
+.main-tab{padding:10px 20px;font-size:14px;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);background:none;border-top:none;border-left:none;border-right:none;display:flex;align-items:center;gap:6px;font-weight:500}
+.main-tab:hover{color:var(--text)}
+.main-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* TOOLBAR */
+.toolbar{padding:12px 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar select,.toolbar input[type=text]{font-size:14px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--text);font-family:inherit}
+.sort-btns{display:flex;gap:4px;margin-left:auto}
+.sort-btn{padding:5px 12px;font-size:13px;font-family:inherit;cursor:pointer;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-weight:500}
+.sort-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.sub-tabs{display:flex;gap:5px;padding:0 20px 10px}
+.sub-tab{padding:5px 16px;font-size:14px;font-family:inherit;cursor:pointer;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-weight:500}
+.sub-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;padding:0 20px}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--surface);border-radius:var(--rl);overflow:hidden;border:1px solid var(--border)}
+th{text-align:left;padding:10px 12px;font-size:12px;font-weight:700;color:var(--text2);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.04em}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:14px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+tr.inactive td{color:var(--text3);background:#faf9f7}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-yellow{background:var(--amber-light);color:var(--amber)}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.action-cell{display:flex;gap:4px}
+.icon-btn{border:none;background:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;display:flex;align-items:center}
+.icon-btn:hover{color:var(--text);background:var(--surface2)}
+.icon-btn.danger:hover{color:var(--red);background:var(--red-light)}
+.inline-select{font-size:13px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}
+.empty{text-align:center;padding:40px;color:var(--text3)}
+
+/* CALENDAR VIEW */
+.cal-wrap{padding:14px 20px}
+.cal-legend{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.cal-legend-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);font-weight:500}
+.legend-dot{width:12px;height:12px;border-radius:3px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;background:var(--border);gap:1px}
+.cal-header{background:var(--surface2);text-align:center;padding:8px 4px;font-size:14px;font-weight:700;color:var(--text2)}
+.cal-header.sun{color:var(--red)}.cal-header.sat{color:var(--blue)}
+.cal-day{background:var(--surface);padding:6px;min-height:85px}
+.cal-day.other-month{background:#faf9f7}
+.cal-day.today{background:#f0f5fc}
+.cal-day-num{font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-bottom:3px;border-radius:50%}
+.cal-day.today .cal-day-num{background:var(--blue);color:#fff}
+.cal-day.sun .cal-day-num{color:var(--red)}.cal-day.sat .cal-day-num{color:var(--blue)}
+.cal-event{font-size:11px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6;font-weight:500}
+.ev-meeting{background:#b5d4f4;color:#042c53}
+.ev-monitoring{background:#c0dd97;color:#173404}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rl);border:1px solid var(--border);padding:24px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+@media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+.form-row{margin-bottom:0}
+.form-row label{display:block;font-size:12px;color:var(--text2);margin-bottom:3px;font-weight:500}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:14px;background:var(--surface);color:var(--text);font-family:inherit}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--blue)}
+.form-section{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.06em;margin:14px 0 8px;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* 和暦カレンダーポップアップ */
+.date-input-wrap{position:relative}
+.date-display{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:14px;background:var(--surface);color:var(--text);cursor:pointer;text-align:left;font-family:inherit;display:flex;align-items:center;justify-content:space-between}
+.date-display:hover{border-color:var(--blue)}
+.date-display .placeholder{color:var(--text3)}
+.date-display svg{color:var(--text3);flex-shrink:0}
+.cal-popup{display:none;position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1000;padding:14px;width:280px}
+.cal-popup.open{display:block}
+.cal-popup-header{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.cal-popup-header select{flex:1;padding:5px 6px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;background:var(--surface);color:var(--text);font-family:inherit}
+.cal-popup-header select:focus{outline:none;border-color:var(--blue)}
+.cal-popup-header button{width:26px;height:26px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);cursor:pointer;color:var(--text2);font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cal-popup-header button:hover{background:var(--surface2)}
+.cal-popup-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-popup-dayname{text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:3px 0}
+.cal-popup-dayname.sun{color:var(--red)}.cal-popup-dayname.sat{color:var(--blue)}
+.cal-popup-day{text-align:center;padding:5px 2px;font-size:13px;cursor:pointer;border-radius:6px;border:none;background:none;font-family:inherit;color:var(--text)}
+.cal-popup-day:hover{background:var(--blue-light);color:var(--blue)}
+.cal-popup-day.selected{background:var(--blue);color:#fff;font-weight:700}
+.cal-popup-day.today-day{font-weight:700;color:var(--blue)}
+.cal-popup-day.other{color:var(--text3)}
+.cal-popup-day.sun{color:var(--red)}.cal-popup-day.sat{color:var(--blue)}
+.cal-popup-day.selected{color:#fff!important}
+.cal-popup-footer{display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.cal-popup-footer button{font-size:12px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2);font-family:inherit}
+.cal-popup-footer button:hover{background:var(--surface2)}
+.cal-popup-footer .today-btn{color:var(--blue);border-color:var(--blue)}
+
+/* MONTH PICKER（プラン更新月など） */
+.month-display{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:14px;background:var(--surface);color:var(--text);cursor:pointer;text-align:left;font-family:inherit;display:flex;align-items:center;justify-content:space-between}
+.month-display:hover{border-color:var(--blue)}
+.month-display .placeholder{color:var(--text3)}
+.month-popup{display:none;position:fixed;background:var(--surface);border:1px solid var(--border2);border-radius:var(--rl);box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1000;padding:14px;width:240px}
+.month-popup.open{display:block}
+.month-popup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.month-popup-header span{font-size:14px;font-weight:700}
+.month-popup-header button{width:26px;height:26px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);cursor:pointer;color:var(--text2);font-size:16px;display:flex;align-items:center;justify-content:center}
+.month-popup-header button:hover{background:var(--surface2)}
+.month-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.month-btn{padding:7px 4px;font-size:13px;cursor:pointer;border-radius:6px;border:none;background:none;font-family:inherit;color:var(--text);text-align:center}
+.month-btn:hover{background:var(--blue-light);color:var(--blue)}
+.month-btn.selected{background:var(--blue);color:#fff;font-weight:700}
+.month-popup-footer{display:flex;justify-content:flex-end;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.month-popup-footer button{font-size:12px;padding:4px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2);font-family:inherit}
+.month-popup-footer button:hover{background:var(--surface2)}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1916;color:#fff;padding:11px 20px;border-radius:var(--r);font-size:14px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.badge-orange{background:#fde8d0;color:#8a3a0a}
+tr.hospitalized td{background:#fff8f0}
+tr.hospitalized:hover td{background:#fef3e6}
+</style>
+</head>
+<body>
+<div style="max-width:1200px;margin:0 auto;padding-bottom:40px">
+
+<div class="topbar">
+  <div class="topbar-title">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+    利用者管理表
+  </div>
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">‹</button>
+    <span class="month-label" id="month-label"></span>
+    <button onclick="changeMonth(1)">›</button>
+  </div>
+  <button class="btn" onclick="saveBackup()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    バックアップ保存
+  </button>
+  <label class="btn" style="cursor:pointer">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    バックアップ読込
+    <input type="file" accept=".json" onchange="loadBackup(event)" style="display:none">
+  </label>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="main-tabs">
+  <button class="main-tab active" id="tab-list" onclick="switchView('list')">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    一覧
+  </button>
+  <button class="main-tab" id="tab-cal" onclick="switchView('cal')">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    カレンダー
+  </button>
+</div>
+
+<div id="view-list">
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="openModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      利用者を追加
+    </button>
+    <select id="filter-kaigo" onchange="renderTable()">
+      <option value="">要介護度（すべて）</option>
+      <option>要介護1</option><option>要介護2</option><option>要介護3</option>
+      <option>要介護4</option><option>要介護5</option>
+      <option>要支援1</option><option>要支援2</option><option>事業対象者</option>
+    </select>
+    <select id="filter-mon" onchange="renderTable()">
+      <option value="">モニタリング（すべて）</option>
+      <option value="未訪問">未訪問</option>
+      <option value="訪問済">訪問済</option>
+      <option value="作成済">作成済</option>
+    </select>
+    <input type="text" id="filter-name" placeholder="氏名で検索…" oninput="renderTable()" style="width:150px">
+    <div class="sort-btns">
+      <button class="sort-btn active" id="sort-kana" onclick="setSort('kana')">あ順</button>
+      <button class="sort-btn" id="sort-cert" onclick="setSort('cert')">認定期限順</button>
+      <button class="sort-btn" id="sort-kaigo" onclick="setSort('kaigo')">介護度順</button>
+    </div>
+  </div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="setListTab('active',this)">利用中</button>
+    <button class="sub-tab" onclick="setListTab('inactive',this)">未利用</button>
+    <button class="sub-tab" onclick="setListTab('ended',this)">終了</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>氏名（年齢）</th><th>要介護度</th><th>認定有効期間</th>
+        <th>更新申請月</th><th>プラン更新月</th><th>担当者会議</th>
+        <th>モニタリング</th><th>状態</th><th></th>
+      </tr></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="view-cal" style="display:none">
+  <div class="cal-wrap">
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="legend-dot" style="background:#b5d4f4"></div>担当者会議</div>
+      <div class="cal-legend-item"><div class="legend-dot" style="background:#c0dd97"></div>モニタリング</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+</div>
+
+</div><!-- end app -->
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="closeModalBg(event)">
+<div class="modal">
+  <div class="modal-title">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg>
+    <span id="modal-title-text">利用者を追加</span>
+  </div>
+
+  <div class="form-section">基本情報</div>
+  <div class="form-grid">
+    <div class="form-row"><label>氏名 *</label><input id="f-name" placeholder="山田 太郎"></div>
+    <div class="form-row"><label>氏名（カナ）※並び順に使用</label><input id="f-kana" placeholder="ヤマダ タロウ"></div>
+    <div class="form-row"><label>生年月日</label><div class="date-input-wrap" id="wrap-birth"></div></div>
+    <div class="form-row"><label>性別</label><select id="f-sex"><option value="">-</option><option>男性</option><option>女性</option></select></div>
+    <div class="form-row"><label>要介護度</label>
+      <select id="f-kaigo">
+        <option value="">-</option><option>要介護1</option><option>要介護2</option><option>要介護3</option>
+        <option>要介護4</option><option>要介護5</option><option>要支援1</option><option>要支援2</option>
+        <option>事業対象者</option><option>申請中</option>
+      </select>
+    </div>
+    <div class="form-row"><label>負担割合</label><select id="f-futan"><option value="">-</option><option>1割</option><option>2割</option><option>3割</option><option>みなし2号</option><option>生活保護</option></select></div>
+    <div class="form-row"><label>被保険者番号</label><input id="f-hoken"></div>
+    <div class="form-row"><label>連絡先</label><input id="f-tel" placeholder="090-XXXX-XXXX"></div>
+  </div>
+  <div class="form-row" style="margin-top:11px"><label>住所</label><input id="f-addr"></div>
+
+  <div class="form-section">認定情報</div>
+  <div class="form-grid">
+    <div class="form-row"><label>認定有効期間（開始）</label><div class="date-input-wrap" id="wrap-cert-start"></div></div>
+    <div class="form-row">
+      <label>認定有効期間（終了）<span style="font-size:11px;color:var(--blue);margin-left:4px">→更新月自動計算</span></label>
+      <div class="date-input-wrap" id="wrap-cert-end"></div>
+    </div>
+    <div class="form-row">
+      <label>更新申請月<span style="font-size:11px;color:var(--text3);margin-left:4px">（自動：終了1ヶ月前）</span></label>
+      <div id="disp-update-apply" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;background:var(--surface2);color:var(--text2);min-height:38px">-</div>
+    </div>
+    <div class="form-row"><label>契約日</label><div class="date-input-wrap" id="wrap-contract"></div></div>
+    <div class="form-row"><label>終了日</label><div class="date-input-wrap" id="wrap-end"></div></div>
+  </div>
+
+  <div class="form-section">プラン情報（短期・長期目標）</div>
+  <div class="form-grid">
+    <div class="form-row"><label>短期目標 更新月</label><div class="date-input-wrap month-wrap" id="wrap-plan-short"></div></div>
+    <div class="form-row"><label>長期目標 更新月</label><div class="date-input-wrap month-wrap" id="wrap-plan-long"></div></div>
+  </div>
+
+  <div class="form-section">今月の予定（月ごとに記録）</div>
+  <div class="form-grid">
+    <div class="form-row"><label>担当者会議日</label><div class="date-input-wrap" id="wrap-meeting-date"></div></div>
+    <div class="form-row"><label>モニタリング日</label><div class="date-input-wrap" id="wrap-monitoring-date"></div></div>
+    <div class="form-row"><label>モニタリング状態</label>
+      <select id="f-monitoring-status"><option value="">-</option><option value="未訪問">未訪問</option><option value="訪問済">訪問済</option><option value="作成済">作成済</option></select>
+    </div>
+  </div>
+
+  <div class="form-section">入院情報</div>
+  <div class="form-grid">
+    <div class="form-row"><label>入院状態</label>
+      <select id="f-hospital-status"><option value="">-</option><option value="入院中">入院中</option><option value="退院済">退院済</option></select>
+    </div>
+    <div class="form-row"><label>入院先</label><input id="f-hospital-name" placeholder="〇〇病院"></div>
+    <div class="form-row"><label>入院日</label><div class="date-input-wrap" id="wrap-hospital-in"></div></div>
+    <div class="form-row"><label>退院（予定）日</label><div class="date-input-wrap" id="wrap-hospital-out"></div></div>
+  </div>
+
+  <div class="form-section">備考</div>
+  <div class="form-row"><textarea id="f-memo" rows="2" style="resize:vertical"></textarea></div>
+  <div class="modal-footer">
+    <button class="btn" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" onclick="saveUser()">保存する</button>
+  </div>
+</div>
+</div>
+
+<!-- カレンダーポップアップ（共通） -->
+<div class="cal-popup" id="cal-popup">
+  <div class="cal-popup-header">
+    <button onclick="popupPrevMonth()">‹</button>
+    <select id="popup-era-year" onchange="popupYearChange()"></select>
+    <select id="popup-month" onchange="popupMonthChange()"></select>
+    <button onclick="popupNextMonth()">›</button>
+  </div>
+  <div class="cal-popup-grid" id="popup-cal-grid"></div>
+  <div class="cal-popup-footer">
+    <button onclick="clearDateField()">クリア</button>
+    <button class="today-btn" onclick="selectToday()">今日</button>
+  </div>
+</div>
+
+<!-- 月ピッカーポップアップ（共通） -->
+<div class="month-popup" id="month-popup">
+  <div class="month-popup-header">
+    <button onclick="monthPopupPrevYear()">‹</button>
+    <span id="month-popup-year-label"></span>
+    <button onclick="monthPopupNextYear()">›</button>
+  </div>
+  <div class="month-grid" id="month-popup-grid"></div>
+  <div class="month-popup-footer">
+    <button onclick="clearMonthField()">クリア</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// データ管理
+// ══════════════════════════════════════════
+const UKEY='cm_users_v4', MKEY='cm_monthly_v4';
+function getUsers(){try{return JSON.parse(localStorage.getItem(UKEY)||'[]')}catch{return[]}}
+function saveUsers(u){localStorage.setItem(UKEY,JSON.stringify(u))}
+function getMonthly(){try{return JSON.parse(localStorage.getItem(MKEY)||'{}')}catch{return{}}}
+function saveMonthly(m){localStorage.setItem(MKEY,JSON.stringify(m))}
+function getMonthData(mk){return(getMonthly()[mk])||{}}
+function setMonthData(mk,uid,data){
+  const m=getMonthly();if(!m[mk])m[mk]={};
+  m[mk][uid]=Object.assign(m[mk][uid]||{},data);saveMonthly(m);
+}
+
+// ══════════════════════════════════════════
+// 状態
+// ══════════════════════════════════════════
+let currentYear=new Date().getFullYear();
+let currentMonth=new Date().getMonth()+1;
+let currentView='list', listTab='active', editingId=null, sortMode='kana';
+
+function monthKey(y,m){return`${y}-${String(m).padStart(2,'0')}`}
+function currentKey(){return monthKey(currentYear,currentMonth)}
+
+// ══════════════════════════════════════════
+// 和暦ユーティリティ
+// ══════════════════════════════════════════
+const REIWA=2019;
+function yearToWareki(y){
+  if(y>=REIWA)return{era:'令和',n:y-2018};
+  return{era:'令和',n:1}; // fallback
+}
+function warekiLabel(y){
+  if(y>=REIWA){const n=y-2018;return'令和'+(n===1?'元':n)+'年';}
+  return y+'年';
+}
+function toWarekiStr(s){
+  if(!s)return'-';
+  const d=new Date(s);if(isNaN(d))return'-';
+  const y=d.getFullYear(),m=d.getMonth()+1,day=d.getDate();
+  return warekiLabel(y).replace('年','年')+m+'月'+day+'日';
+}
+function toWarekiMonthStr(s){
+  if(!s)return'-';
+  const[y,m]=s.split('-').map(Number);
+  return warekiLabel(y).replace('年','年')+m+'月';
+}
+
+// ══════════════════════════════════════════
+// 和暦カレンダーポップアップ
+// ══════════════════════════════════════════
+let activeFieldId=null;  // どのフィールドに入力中か
+let activeIsMonth=false; // 月選択モードか
+let popupY=new Date().getFullYear();
+let popupM=new Date().getMonth()+1;
+let monthPopupY=new Date().getFullYear();
+
+// 令和の年リスト（令和1〜令和15）
+const REIWA_YEARS=[];
+for(let r=1;r<=15;r++)REIWA_YEARS.push(REIWA-1+r);
+
+function buildPopupYearSelect(){
+  const sel=document.getElementById('popup-era-year');
+  sel.innerHTML='';
+  REIWA_YEARS.forEach(y=>{
+    const o=document.createElement('option');
+    o.value=y;o.textContent=warekiLabel(y);
+    sel.appendChild(o);
+  });
+}
+function buildPopupMonthSelect(){
+  const sel=document.getElementById('popup-month');
+  sel.innerHTML='';
+  for(let m=1;m<=12;m++){
+    const o=document.createElement('option');
+    o.value=m;o.textContent=m+'月';
+    sel.appendChild(o);
+  }
+}
+
+function openCalPopup(fieldId, anchorEl){
+  activeFieldId=fieldId;activeIsMonth=false;
+  // 既存値があればその月を表示
+  const cur=getFieldIso(fieldId);
+  if(cur){const d=new Date(cur);popupY=d.getFullYear();popupM=d.getMonth()+1;}
+  else{popupY=new Date().getFullYear();popupM=new Date().getMonth()+1;}
+  positionPopup('cal-popup', anchorEl);
+  document.getElementById('popup-era-year').value=popupY;
+  document.getElementById('popup-month').value=popupM;
+  renderPopupCal();
+  document.getElementById('cal-popup').classList.add('open');
+}
+function openMonthPopup(fieldId, anchorEl){
+  activeFieldId=fieldId;activeIsMonth=true;
+  const cur=getFieldIso(fieldId);
+  if(cur){const[y]=cur.split('-').map(Number);monthPopupY=y;}
+  else monthPopupY=new Date().getFullYear();
+  positionPopup('month-popup', anchorEl);
+  renderMonthPopup();
+  document.getElementById('month-popup').classList.add('open');
+}
+function positionPopup(popupId, anchorEl){
+  const popup=document.getElementById(popupId);
+  popup.style.display='block';
+  const rect=anchorEl.getBoundingClientRect();
+  const pw=popup.offsetWidth||280;
+  let left=rect.left;
+  let top=rect.bottom+4;
+  if(left+pw>window.innerWidth-8)left=window.innerWidth-pw-8;
+  if(top+300>window.innerHeight)top=rect.top-310;
+  popup.style.left=left+'px';
+  popup.style.top=top+'px';
+  popup.style.display='';
+}
+function closeAllPopups(){
+  document.getElementById('cal-popup').classList.remove('open');
+  document.getElementById('month-popup').classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  const cp=document.getElementById('cal-popup');
+  const mp=document.getElementById('month-popup');
+  if(cp.classList.contains('open')&&!cp.contains(e.target)&&!e.target.closest('.date-display'))closeAllPopups();
+  if(mp.classList.contains('open')&&!mp.contains(e.target)&&!e.target.closest('.month-display'))closeAllPopups();
+});
+
+function popupYearChange(){popupY=parseInt(document.getElementById('popup-era-year').value);renderPopupCal();}
+function popupMonthChange(){popupM=parseInt(document.getElementById('popup-month').value);renderPopupCal();}
+function popupPrevMonth(){popupM--;if(popupM<1){popupM=12;popupY--;}document.getElementById('popup-era-year').value=popupY;document.getElementById('popup-month').value=popupM;renderPopupCal();}
+function popupNextMonth(){popupM++;if(popupM>12){popupM=1;popupY++;}document.getElementById('popup-era-year').value=popupY;document.getElementById('popup-month').value=popupM;renderPopupCal();}
+
+function renderPopupCal(){
+  const grid=document.getElementById('popup-cal-grid');
+  const firstDay=new Date(popupY,popupM-1,1).getDay();
+  const daysInMonth=new Date(popupY,popupM,0).getDate();
+  const today=new Date();
+  const selectedIso=getFieldIso(activeFieldId)||'';
+  const dow=['日','月','火','水','木','金','土'];
+  let html=dow.map((d,i)=>`<div class="cal-popup-dayname${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
+  for(let i=0;i<firstDay;i++)html+=`<div></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const iso=`${popupY}-${String(popupM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const w=new Date(popupY,popupM-1,d).getDay();
+    const isToday=today.getFullYear()===popupY&&today.getMonth()+1===popupM&&today.getDate()===d;
+    const isSel=iso===selectedIso;
+    let cls='cal-popup-day';
+    if(w===0)cls+=' sun';if(w===6)cls+=' sat';
+    if(isToday)cls+=' today-day';if(isSel)cls+=' selected';
+    html+=`<button class="${cls}" onclick="selectDate('${iso}')">${d}</button>`;
+  }
+  grid.innerHTML=html;
+}
+
+function selectDate(iso){
+  setFieldIso(activeFieldId,iso);
+  closeAllPopups();
+  // 認定終了日を選んだ場合、更新申請月を自動計算
+  if(activeFieldId==='wrap-cert-end')calcUpdateApply();
+  // 担当者会議日を選んだ場合、表示用テキスト自動生成（月次データ）
+  // meeting表示はtable側で自動
+}
+function selectToday(){selectDate(new Date().toISOString().slice(0,10));}
+function clearDateField(){setFieldIso(activeFieldId,'');closeAllPopups();if(activeFieldId==='wrap-cert-end')calcUpdateApply();}
+
+// 月ポップアップ
+function renderMonthPopup(){
+  document.getElementById('month-popup-year-label').textContent=warekiLabel(monthPopupY);
+  const grid=document.getElementById('month-popup-grid');
+  const cur=getFieldIso(activeFieldId)||'';
+  let html='';
+  for(let m=1;m<=12;m++){
+    const iso=`${monthPopupY}-${String(m).padStart(2,'0')}`;
+    const isSel=cur===iso;
+    html+=`<button class="month-btn${isSel?' selected':''}" onclick="selectMonth('${iso}')">${m}月</button>`;
+  }
+  grid.innerHTML=html;
+}
+function monthPopupPrevYear(){
+  monthPopupY--;
+  if(monthPopupY<REIWA)monthPopupY=REIWA;
+  renderMonthPopup();
+}
+function monthPopupNextYear(){monthPopupY++;renderMonthPopup();}
+function selectMonth(iso){setFieldIso(activeFieldId,iso);closeAllPopups();}
+function clearMonthField(){setFieldIso(activeFieldId,'');closeAllPopups();}
+
+// ══════════════════════════════════════════
+// フィールド値管理（iso文字列 ↔ data属性）
+// ══════════════════════════════════════════
+// 各wrap要素にdata-isoを持たせ、ボタン表示を更新
+function getFieldIso(wrapId){
+  const el=document.getElementById(wrapId);
+  return el?el.dataset.iso||'':'';
+}
+function setFieldIso(wrapId,iso){
+  const el=document.getElementById(wrapId);
+  if(!el)return;
+  el.dataset.iso=iso||'';
+  refreshDisplayBtn(wrapId,iso);
+}
+function refreshDisplayBtn(wrapId,iso){
+  const el=document.getElementById(wrapId);
+  if(!el)return;
+  const btn=el.querySelector('.date-display,.month-display');
+  if(!btn)return;
+  const isMonth=el.classList.contains('month-wrap');
+  const txt=iso?(isMonth?toWarekiMonthStr(iso):toWarekiStr(iso)):'';
+  if(txt){
+    btn.innerHTML=`<span>${txt}</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  }else{
+    const ph=isMonth?'年月を選択':'日付を選択';
+    btn.innerHTML=`<span class="placeholder">${ph}</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  }
+}
+
+function buildDateField(wrapId){
+  const el=document.getElementById(wrapId);
+  if(!el)return;
+  el.dataset.iso='';
+  const isMonth=el.classList.contains('month-wrap');
+  const btn=document.createElement('button');
+  btn.type='button';
+  btn.className=isMonth?'month-display':'date-display';
+  const ph=isMonth?'年月を選択':'日付を選択';
+  btn.innerHTML=`<span class="placeholder">${ph}</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  btn.onclick=(e)=>{
+    e.stopPropagation();
+    closeAllPopups();
+    if(isMonth)openMonthPopup(wrapId,btn);
+    else openCalPopup(wrapId,btn);
+  };
+  el.appendChild(btn);
+}
+
+function initAllDateFields(){
+  buildPopupYearSelect();
+  buildPopupMonthSelect();
+  ['wrap-birth','wrap-cert-start','wrap-cert-end','wrap-contract','wrap-end',
+   'wrap-meeting-date','wrap-monitoring-date','wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
+  ['wrap-plan-short','wrap-plan-long'].forEach(buildDateField);
+}
+function clearAllDateFields(){
+  ['wrap-birth','wrap-cert-start','wrap-cert-end','wrap-contract','wrap-end',
+   'wrap-meeting-date','wrap-monitoring-date','wrap-plan-short','wrap-plan-long',
+   'wrap-hospital-in','wrap-hospital-out']
+    .forEach(id=>setFieldIso(id,''));
+  document.getElementById('disp-update-apply').textContent='-';
+  document.getElementById('disp-update-apply').dataset.iso='';
+}
+
+// ══════════════════════════════════════════
+// 認定終了日→更新申請月 自動計算
+// ══════════════════════════════════════════
+function calcUpdateApply(){
+  const endIso=getFieldIso('wrap-cert-end');
+  const disp=document.getElementById('disp-update-apply');
+  if(!endIso){disp.textContent='-';disp.dataset.iso='';return;}
+  const d=new Date(endIso);
+  let y=d.getFullYear(),m=d.getMonth()+1-1;
+  if(m<1){m+=12;y--;}
+  disp.textContent=toWarekiMonthStr(`${y}-${String(m).padStart(2,'0')}`);
+  disp.dataset.iso=`${y}-${String(m).padStart(2,'0')}`;
+}
+
+// ══════════════════════════════════════════
+// ユーティリティ
+// ══════════════════════════════════════════
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+function calcAge(b){if(!b)return'';const bd=new Date(b),n=new Date();let a=n.getFullYear()-bd.getFullYear();if(n<new Date(n.getFullYear(),bd.getMonth(),bd.getDate()))a--;return a}
+function getUpdateBadge(s){
+  if(!s)return'';
+  const[y,m]=s.split('-').map(Number);
+  const diff=(y*12+m)-(currentYear*12+currentMonth);
+  if(diff===0)return'<span class="badge badge-blue">今月</span>';
+  if(diff===1)return'<span class="badge badge-yellow">来月</span>';
+  if(diff===-1)return'<span class="badge badge-red">先月</span>';
+  return'';
+}
+const KAIGO_ORDER={'要介護5':0,'要介護4':1,'要介護3':2,'要介護2':3,'要介護1':4,'要支援2':5,'要支援1':6,'事業対象者':7,'申請中':8,'':9};
+
+// ══════════════════════════════════════════
+// 月ナビ
+// ══════════════════════════════════════════
+function updateMonthLabel(){
+  document.getElementById('month-label').textContent=warekiLabel(currentYear).replace('年','')+currentYear+'年'.replace(warekiLabel(currentYear),'').slice(-1)+currentMonth+'月';
+  // シンプルに
+  const era=currentYear>=REIWA?'令和':'';
+  const n=currentYear>=REIWA?currentYear-2018:currentYear;
+  document.getElementById('month-label').textContent=(currentYear>=REIWA?'令和'+n+'年':currentYear+'年')+currentMonth+'月';
+}
+function changeMonth(d){
+  currentMonth+=d;
+  if(currentMonth>12){currentMonth=1;currentYear++}
+  if(currentMonth<1){currentMonth=12;currentYear--}
+  updateMonthLabel();renderSummary();
+  if(currentView==='list')renderTable();else renderCalendar();
+}
+
+// ══════════════════════════════════════════
+// ビュー・タブ・ソート
+// ══════════════════════════════════════════
+function switchView(v){
+  currentView=v;
+  document.getElementById('view-list').style.display=v==='list'?'':'none';
+  document.getElementById('view-cal').style.display=v==='cal'?'':'none';
+  document.getElementById('tab-list').classList.toggle('active',v==='list');
+  document.getElementById('tab-cal').classList.toggle('active',v==='cal');
+  if(v==='cal')renderCalendar();else renderTable();
+}
+function setListTab(t,el){listTab=t;document.querySelectorAll('.sub-tab').forEach(e=>e.classList.remove('active'));el.classList.add('active');renderTable();}
+function setSort(mode){sortMode=mode;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));document.getElementById('sort-'+mode)?.classList.add('active');renderTable();}
+function sortUsers(users){
+  if(sortMode==='kana')return[...users].sort((a,b)=>(a.kana||a.name||'').replace(/\s/g,'').localeCompare((b.kana||b.name||'').replace(/\s/g,''),'ja'));
+  if(sortMode==='cert')return[...users].sort((a,b)=>(a.certEnd||'9999').localeCompare(b.certEnd||'9999'));
+  if(sortMode==='kaigo')return[...users].sort((a,b)=>{const oa=KAIGO_ORDER[a.kaigo]??9,ob=KAIGO_ORDER[b.kaigo]??9;if(oa!==ob)return oa-ob;return(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja');});
+  return users;
+}
+
+// ══════════════════════════════════════════
+// サマリー
+// ══════════════════════════════════════════
+function getTimingGroups(users,field){
+  const lastMonth=[],thisMonth=[],nextMonth=[];
+  users.forEach(u=>{
+    const s=u[field];if(!s)return;
+    const[y,m]=s.split('-').map(Number);
+    const diff=(y*12+m)-(currentYear*12+currentMonth);
+    if(diff===-1)lastMonth.push(u);
+    else if(diff===0)thisMonth.push(u);
+    else if(diff===1)nextMonth.push(u);
+  });
+  const certExpired=field==='updateApply'?users.filter(u=>{
+    if(!u.certEnd)return false;
+    return new Date(u.certEnd)<new Date(new Date().toDateString());
+  }):[];
+  return{expired:certExpired,lastMonth,thisMonth,nextMonth};
+}
+function summaryCardRows(groups){
+  const rows=[];
+  if(groups.expired&&groups.expired.length){
+    rows.push(`<div class="scard-row alert-red"><span>⚠ 期限切れ</span><strong>${groups.expired.length}件</strong></div>`);
+    rows.push(`<div class="scard-row-names">${groups.expired.map(u=>u.name).join('、')}</div>`);
+  }
+  if(groups.lastMonth.length){
+    rows.push(`<div class="scard-row alert-red"><span>先月（未処理）</span><strong>${groups.lastMonth.length}件</strong></div>`);
+    rows.push(`<div class="scard-row-names">${groups.lastMonth.map(u=>u.name).join('、')}</div>`);
+  }
+  if(groups.thisMonth.length){
+    rows.push(`<div class="scard-row alert-blue"><span>今月</span><strong>${groups.thisMonth.length}件</strong></div>`);
+    rows.push(`<div class="scard-row-names">${groups.thisMonth.map(u=>u.name).join('、')}</div>`);
+  }
+  if(groups.nextMonth.length){
+    rows.push(`<div class="scard-row alert-yellow"><span>来月</span><strong>${groups.nextMonth.length}件</strong></div>`);
+    rows.push(`<div class="scard-row-names">${groups.nextMonth.map(u=>u.name).join('、')}</div>`);
+  }
+  if(!rows.length)rows.push(`<div class="scard-row alert-none">対象者なし</div>`);
+  return`<div class="scard-rows">${rows.join('')}</div>`;
+}
+function renderSummary(){
+  const users=getUsers().filter(u=>!u.ended);
+  const active=users.filter(u=>!u.inactive);
+  const kaigo=active.filter(u=>u.kaigo&&u.kaigo.startsWith('要介護')).length;
+  const yobo=active.filter(u=>u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者')).length;
+  const shinsei=active.filter(u=>u.kaigo==='申請中').length;
+  const hospitalized=active.filter(u=>u.hospitalStatus==='入院中').length;
+  const md=getMonthData(currentKey());
+  const monDone=active.filter(u=>md[u.id]&&md[u.id].monitoringStatus==='作成済').length;
+  const monPlan=active.filter(u=>md[u.id]&&(md[u.id].monitoringStatus==='訪問済'||md[u.id].monitoringStatus==='未訪問')).length;
+  const applyGroups=getTimingGroups(active,'updateApply');
+  const applyTotal=applyGroups.expired.length+applyGroups.lastMonth.length+applyGroups.thisMonth.length+applyGroups.nextMonth.length;
+  // プラン更新：短期・長期どちらかが対象月のもの
+  const planUsers=active.filter(u=>{
+    return getUpdateBadge(u.planShort)!==''||getUpdateBadge(u.planLong)!=='';
+  });
+  const planGroups={expired:[],lastMonth:[],thisMonth:[],nextMonth:[]};
+  active.forEach(u=>{
+    ['planShort','planLong'].forEach(f=>{
+      const s=u[f];if(!s)return;
+      const[y,m]=s.split('-').map(Number);
+      const diff=(y*12+m)-(currentYear*12+currentMonth);
+      if(diff===-1&&!planGroups.lastMonth.find(x=>x.id===u.id))planGroups.lastMonth.push(u);
+      else if(diff===0&&!planGroups.thisMonth.find(x=>x.id===u.id))planGroups.thisMonth.push(u);
+      else if(diff===1&&!planGroups.nextMonth.find(x=>x.id===u.id))planGroups.nextMonth.push(u);
+    });
+  });
+  const planTotal=planGroups.lastMonth.length+planGroups.thisMonth.length+planGroups.nextMonth.length;
+  document.getElementById('summary').innerHTML=`
+    <div class="scard">
+      <div class="scard-label">担当件数</div>
+      <div class="scard-val">${active.length}<span style="font-size:15px;font-weight:400">件</span></div>
+      <div class="scard-rows">
+        <div class="scard-row alert-none"><span>介護</span><strong>${kaigo}件</strong></div>
+        <div class="scard-row alert-none"><span>予防・事業</span><strong>${yobo}件</strong></div>
+        ${shinsei?`<div class="scard-row alert-yellow"><span>申請中</span><strong>${shinsei}件</strong></div>`:''}
+        ${hospitalized?`<div class="scard-row alert-red"><span>🏥 入院中</span><strong>${hospitalized}件</strong></div>`:''}
+      </div>
+    </div>
+    <div class="scard">
+      <div class="scard-label">認定更新申請</div>
+      <div class="scard-val">${applyTotal}<span style="font-size:15px;font-weight:400">件</span></div>
+      ${summaryCardRows(applyGroups)}
+    </div>
+    <div class="scard">
+      <div class="scard-label">プラン更新（短期・長期）</div>
+      <div class="scard-val">${planTotal}<span style="font-size:15px;font-weight:400">件</span></div>
+      ${summaryCardRows(planGroups)}
+    </div>
+    <div class="scard">
+      <div class="scard-label">モニタリング</div>
+      <div class="scard-val">${monDone}<span style="font-size:15px;font-weight:400"> / ${active.length}件</span></div>
+      <div class="scard-rows">
+        <div class="scard-row alert-blue"><span>作成済</span><strong>${monDone}件</strong></div>
+        ${monPlan?`<div class="scard-row alert-yellow"><span>訪問済・未訪問</span><strong>${monPlan}件</strong></div>`:''}
+        <div class="scard-row ${active.length-monDone-monPlan>0?'alert-red':'alert-none'}"><span>未設定</span><strong>${active.length-monDone-monPlan}件</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════
+// テーブル
+// ══════════════════════════════════════════
+function renderTable(){
+  let users=getUsers();
+  const md=getMonthData(currentKey());
+  const fk=document.getElementById('filter-kaigo').value;
+  const fm=document.getElementById('filter-mon').value;
+  const fn=document.getElementById('filter-name').value.trim();
+  if(listTab==='active')users=users.filter(u=>!u.inactive&&!u.ended);
+  else if(listTab==='inactive')users=users.filter(u=>u.inactive&&!u.ended);
+  else users=users.filter(u=>u.ended);
+  if(fk)users=users.filter(u=>u.kaigo===fk);
+  if(fm)users=users.filter(u=>md[u.id]&&md[u.id].monitoringStatus===fm);
+  if(fn)users=users.filter(u=>(u.name&&u.name.includes(fn))||(u.kana&&u.kana.includes(fn)));
+  users=sortUsers(users);
+  const tbody=document.getElementById('table-body');
+  if(!users.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty">利用者がいません</div></td></tr>`;return;}
+  tbody.innerHTML=users.map(u=>{
+    const mon=md[u.id]||{};
+    let certBadge='';
+    if(u.certEnd){
+      const diff=Math.floor((new Date(u.certEnd)-new Date(new Date().toDateString()))/(86400000));
+      if(diff<0)certBadge='<span class="badge badge-red" style="margin-left:4px">期限切れ</span>';
+      else if(diff<=60)certBadge='<span class="badge badge-yellow" style="margin-left:4px">まもなく</span>';
+    }
+    // プラン更新バッジ（短期・長期どちらか近い方）
+    const planBadge=(getUpdateBadge(u.planShort)||getUpdateBadge(u.planLong));
+    // 担当者会議表示：日付から自動生成
+    let meetingDisp='-';
+    if(mon.meetingDate){
+      const d=new Date(mon.meetingDate);
+      meetingDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
+    }
+    return`<tr class="${u.inactive?'inactive':u.hospitalStatus==='入院中'?'hospitalized':''}">
+      <td>
+        <strong style="font-size:15px">${u.name||'-'}</strong>
+        ${u.hospitalStatus==='入院中'?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
+        ${u.birth?` <span style="font-size:12px;color:var(--text3)">(${calcAge(u.birth)}歳)</span>`:''}
+        ${u.kana?`<br><span style="font-size:11px;color:var(--text3)">${u.kana}</span>`:''}
+      </td>
+      <td>
+        <span class="badge badge-gray">${u.kaigo||'-'}</span>
+        ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
+      </td>
+      <td style="font-size:13px;line-height:1.8">
+        ${toWarekiStr(u.certStart)}<br>${toWarekiStr(u.certEnd)}${certBadge}
+      </td>
+      <td style="font-size:13px">${u.updateApply?toWarekiMonthStr(u.updateApply):'-'}<br>${getUpdateBadge(u.updateApply)}</td>
+      <td style="font-size:12px;line-height:1.8">
+        ${u.planShort?'短：'+toWarekiMonthStr(u.planShort):'短：-'} ${getUpdateBadge(u.planShort)}<br>
+        ${u.planLong?'長：'+toWarekiMonthStr(u.planLong):'長：-'} ${getUpdateBadge(u.planLong)}
+      </td>
+      <td style="font-size:13px">${meetingDisp}</td>
+      <td>
+        <select class="inline-select" onchange="setMonthField('${u.id}','monitoringStatus',this.value)">
+          <option value="" ${!mon.monitoringStatus?'selected':''}>-</option>
+          <option value="未訪問" ${mon.monitoringStatus==='未訪問'?'selected':''}>未訪問</option>
+          <option value="訪問済" ${mon.monitoringStatus==='訪問済'?'selected':''}>訪問済</option>
+          <option value="作成済" ${mon.monitoringStatus==='作成済'?'selected':''}>作成済</option>
+        </select>
+      </td>
+      <td>
+        <select class="inline-select" onchange="setStatus('${u.id}',this.value)">
+          <option value="active" ${!u.inactive&&!u.ended?'selected':''}>利用中</option>
+          <option value="inactive" ${u.inactive?'selected':''}>未利用</option>
+          <option value="ended" ${u.ended?'selected':''}>終了</option>
+        </select>
+      </td>
+      <td>
+        <div class="action-cell">
+          <button class="icon-btn" onclick="openModal('${u.id}')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn danger" onclick="deleteUser('${u.id}')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// カレンダー
+// ══════════════════════════════════════════
+function renderCalendar(){
+  const grid=document.getElementById('cal-grid');
+  const firstDay=new Date(currentYear,currentMonth-1,1).getDay();
+  const daysInMonth=new Date(currentYear,currentMonth,0).getDate();
+  const today=new Date();
+  const users=getUsers().filter(u=>!u.ended&&!u.inactive);
+  const md=getMonthData(currentKey());
+  const evMap={};
+  users.forEach(u=>{
+    const mon=md[u.id]||{};
+    ['meetingDate','monitoringDate'].forEach(key=>{
+      if(mon[key]){
+        const d=new Date(mon[key]);
+        if(d.getFullYear()===currentYear&&d.getMonth()+1===currentMonth){
+          const day=d.getDate();if(!evMap[day])evMap[day]=[];
+          evMap[day].push({type:key==='meetingDate'?'meeting':'monitoring',name:u.name});
+        }
+      }
+    });
+  });
+  const dow=['日','月','火','水','木','金','土'];
+  let html=dow.map((d,i)=>`<div class="cal-header${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
+  for(let i=0;i<firstDay;i++)html+=`<div class="cal-day other-month"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const w=new Date(currentYear,currentMonth-1,d).getDay();
+    const isToday=today.getFullYear()===currentYear&&today.getMonth()+1===currentMonth&&today.getDate()===d;
+    let cls='cal-day';if(w===0)cls+=' sun';if(w===6)cls+=' sat';if(isToday)cls+=' today';
+    const evs=(evMap[d]||[]).map(e=>`<div class="cal-event ${e.type==='meeting'?'ev-meeting':'ev-monitoring'}">${e.name}</div>`).join('');
+    html+=`<div class="${cls}"><span class="cal-day-num">${d}</span>${evs}</div>`;
+  }
+  const trail=(7-(firstDay+daysInMonth)%7)%7;
+  for(let i=0;i<trail;i++)html+=`<div class="cal-day other-month"></div>`;
+  grid.innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// データ操作
+// ══════════════════════════════════════════
+function setMonthField(uid,key,val){setMonthData(currentKey(),uid,{[key]:val});renderSummary();}
+function setStatus(id,val){
+  const users=getUsers();const u=users.find(u=>u.id===id);
+  if(u){u.inactive=val==='inactive';u.ended=val==='ended';saveUsers(users);renderSummary();renderTable();}
+}
+function deleteUser(id){
+  if(!confirm('この利用者を削除しますか？'))return;
+  saveUsers(getUsers().filter(u=>u.id!==id));renderSummary();renderTable();showToast('削除しました');
+}
+
+// ══════════════════════════════════════════
+// モーダル
+// ══════════════════════════════════════════
+function openModal(id){
+  editingId=id||null;
+  ['f-name','f-kana','f-sex','f-kaigo','f-futan','f-hoken','f-tel','f-addr','f-monitoring-status','f-memo','f-hospital-status','f-hospital-name']
+    .forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';})
+  clearAllDateFields();
+  if(id){
+    const u=getUsers().find(u=>u.id===id);
+    const mon=getMonthData(currentKey())[id]||{};
+    if(u){
+      document.getElementById('f-name').value=u.name||'';
+      document.getElementById('f-kana').value=u.kana||'';
+      document.getElementById('f-sex').value=u.sex||'';
+      document.getElementById('f-kaigo').value=u.kaigo||'';
+      document.getElementById('f-futan').value=u.futan||'';
+      document.getElementById('f-hoken').value=u.hoken||'';
+      document.getElementById('f-tel').value=u.tel||'';
+      document.getElementById('f-addr').value=u.addr||'';
+      document.getElementById('f-memo').value=u.memo||'';
+      setFieldIso('wrap-birth',u.birth||'');
+      setFieldIso('wrap-cert-start',u.certStart||'');
+      setFieldIso('wrap-cert-end',u.certEnd||'');
+      setFieldIso('wrap-contract',u.contract||'');
+      setFieldIso('wrap-end',u.endDate||'');
+      setFieldIso('wrap-plan-short',u.planShort||'');
+      setFieldIso('wrap-plan-long',u.planLong||'');
+      document.getElementById('f-hospital-status').value=u.hospitalStatus||'';
+      document.getElementById('f-hospital-name').value=u.hospitalName||'';
+      setFieldIso('wrap-hospital-in',u.hospitalIn||'');
+      setFieldIso('wrap-hospital-out',u.hospitalOut||'');
+      // 更新申請月表示
+      if(u.updateApply){
+        const disp=document.getElementById('disp-update-apply');
+        disp.textContent=toWarekiMonthStr(u.updateApply);
+        disp.dataset.iso=u.updateApply;
+      }
+    }
+    document.getElementById('f-monitoring-status').value=mon.monitoringStatus||'';
+    setFieldIso('wrap-meeting-date',mon.meetingDate||'');
+    setFieldIso('wrap-monitoring-date',mon.monitoringDate||'');
+    document.getElementById('modal-title-text').textContent='利用者情報を編集';
+  }else{
+    document.getElementById('modal-title-text').textContent='利用者を追加';
+  }
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');closeAllPopups();}
+function closeModalBg(e){if(e.target===document.getElementById('modal-bg'))closeModal();}
+
+function saveUser(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('氏名を入力してください');return;}
+  const dispUA=document.getElementById('disp-update-apply');
+  const userData={
+    name,kana:document.getElementById('f-kana').value.trim(),
+    birth:getFieldIso('wrap-birth'),sex:document.getElementById('f-sex').value,
+    kaigo:document.getElementById('f-kaigo').value,futan:document.getElementById('f-futan').value,
+    hoken:document.getElementById('f-hoken').value,tel:document.getElementById('f-tel').value,
+    addr:document.getElementById('f-addr').value,
+    certStart:getFieldIso('wrap-cert-start'),certEnd:getFieldIso('wrap-cert-end'),
+    updateApply:dispUA.dataset.iso||'',
+    planShort:getFieldIso('wrap-plan-short'),planLong:getFieldIso('wrap-plan-long'),
+    hospitalStatus:document.getElementById('f-hospital-status').value,
+    hospitalName:document.getElementById('f-hospital-name').value,
+    hospitalIn:getFieldIso('wrap-hospital-in'),
+    hospitalOut:getFieldIso('wrap-hospital-out'),
+    contract:getFieldIso('wrap-contract'),endDate:getFieldIso('wrap-end'),
+    memo:document.getElementById('f-memo').value,
+  };
+  const monthData={
+    meetingDate:getFieldIso('wrap-meeting-date'),
+    monitoringDate:getFieldIso('wrap-monitoring-date'),
+    monitoringStatus:document.getElementById('f-monitoring-status').value,
+  };
+  const users=getUsers();
+  let uid=editingId;
+  if(editingId){const u=users.find(u=>u.id===editingId);if(u)Object.assign(u,userData);}
+  else{uid=Date.now().toString();users.push({id:uid,...userData});}
+  saveUsers(users);
+  setMonthData(currentKey(),uid,monthData);
+  closeModal();renderSummary();
+  if(currentView==='list')renderTable();else renderCalendar();
+  showToast(editingId?'更新しました':'登録しました');
+}
+
+// ══════════════════════════════════════════
+// バックアップ
+// ══════════════════════════════════════════
+function saveBackup(){
+  const blob=new Blob([JSON.stringify({users:getUsers(),monthly:getMonthly()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`利用者管理表_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  showToast('バックアップを保存しました');
+}
+function loadBackup(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{const d=JSON.parse(ev.target.result);if(d.users)saveUsers(d.users);if(d.monthly)saveMonthly(d.monthly);renderSummary();if(currentView==='list')renderTable();else renderCalendar();showToast('読み込み完了');}
+    catch{alert('読み込み失敗');}
+  };r.readAsText(f);e.target.value='';
+}
+
+// ══════════════════════════════════════════
+// 初期化
+// ══════════════════════════════════════════
+initAllDateFields();
+updateMonthLabel();
+renderSummary();
+renderTable();
+</script>
+</body>
+</html>

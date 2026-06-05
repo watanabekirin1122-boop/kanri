@@ -1017,9 +1017,51 @@ function loadBackup(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=ev=>{
-    try{const d=JSON.parse(ev.target.result);if(d.users)saveUsers(d.users);if(d.monthly)saveMonthly(d.monthly);renderSummary();if(currentView==='list')renderTable();else renderCalendar();showToast('読み込み完了');}
-    catch{alert('読み込み失敗');}
-  };r.readAsText(f);e.target.value='';
+    try{
+      const parsed=JSON.parse(ev.target.result);
+      // 旧形式：配列そのまま
+      if(Array.isArray(parsed)){
+        saveUsers(parsed);
+        showToast('読み込み完了（旧形式）');
+      }
+      // 旧形式：cmapp_data キー
+      else if(parsed.cmapp_data){
+        const months=parsed.cmapp_data;
+        // 最初の月のデータからusersを復元
+        const allUsers=[];
+        const monthly={};
+        Object.keys(months).forEach(mk=>{
+          const arr=months[mk];
+          if(Array.isArray(arr)){
+            arr.forEach(u=>{
+              if(!allUsers.find(x=>x.id===u.id)){
+                const{monitoring,meeting,meetingDate,monitoringDate,...userData}=u;
+                allUsers.push(userData);
+              }
+              if(!monthly[mk])monthly[mk]={};
+              monthly[mk][u.id]={
+                meeting:u.meeting||'',
+                meetingDate:u.meetingDate||'',
+                monitoringDate:u.monitoringDate||'',
+                monitoringStatus:u.monitoringStatus||u.monitoring||'',
+              };
+            });
+          }
+        });
+        saveUsers(allUsers);saveMonthly(monthly);
+        showToast('読み込み完了（旧形式）');
+      }
+      // 新形式：{users, monthly}
+      else{
+        if(parsed.users)saveUsers(parsed.users);
+        if(parsed.monthly)saveMonthly(parsed.monthly);
+        showToast('読み込み完了');
+      }
+      renderSummary();
+      if(currentView==='list')renderTable();else renderCalendar();
+    }catch{alert('ファイルの読み込みに失敗しました。');}
+  };
+  r.readAsText(f);e.target.value='';
 }
 
 // ══════════════════════════════════════════

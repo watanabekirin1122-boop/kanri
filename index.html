@@ -245,9 +245,9 @@ tr.hl-green:hover td{background:#e4f2e8}
     </div>
   </div>
   <div class="sub-tabs">
-    <button class="sub-tab active" onclick="setListTab('active',this)">利用中</button>
-    <button class="sub-tab" onclick="setListTab('inactive',this)">未利用</button>
-    <button class="sub-tab" onclick="setListTab('ended',this)">終了</button>
+    <button class="sub-tab active" onclick="setListTab('all',this)">全員</button>
+    <button class="sub-tab" onclick="setListTab('kaigo',this)">介護</button>
+    <button class="sub-tab" onclick="setListTab('yobo',this)">支援・総合事業</button>
   </div>
   <div class="table-wrap">
     <table>
@@ -409,7 +409,7 @@ function setMonthData(mk,uid,data){
 // ══════════════════════════════════════════
 let currentYear=new Date().getFullYear();
 let currentMonth=new Date().getMonth()+1;
-let currentView='list', listTab='active', editingId=null, sortMode='kana';
+let currentView='list', listTab='all', editingId=null, sortMode='kana';
 
 function monthKey(y,m){return`${y}-${String(m).padStart(2,'0')}`}
 function currentKey(){return monthKey(currentYear,currentMonth)}
@@ -921,9 +921,9 @@ function renderTable(){
   const fk=document.getElementById('filter-kaigo').value;
   const fm=document.getElementById('filter-mon').value;
   const fn=document.getElementById('filter-name').value.trim();
-  if(listTab==='active')users=users.filter(u=>!u.inactive&&!u.ended);
-  else if(listTab==='inactive')users=users.filter(u=>u.inactive&&!u.ended);
-  else users=users.filter(u=>u.ended);
+  if(listTab==='all')users=users.filter(u=>!u.ended&&!u.inactive);
+  else if(listTab==='kaigo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&u.kaigo.startsWith('要介護'));
+  else if(listTab==='yobo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者'||u.kaigo==='申請中'));
   if(fk)users=users.filter(u=>u.kaigo===fk);
   if(fm)users=users.filter(u=>md[u.id]&&md[u.id].monitoringStatus===fm);
   if(fn)users=users.filter(u=>(u.name&&u.name.includes(fn))||(u.kana&&u.kana.includes(fn)));

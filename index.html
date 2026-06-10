@@ -213,10 +213,7 @@ tr.hl-green:hover td{background:#e4f2e8}
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
     一覧
   </button>
-  <button class="main-tab" id="tab-cal" onclick="switchView('cal')">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    カレンダー
-  </button>
+
 </div>
 
 <div id="view-list">
@@ -248,25 +245,18 @@ tr.hl-green:hover td{background:#e4f2e8}
     <button class="sub-tab active" onclick="setListTab('all',this)">全員</button>
     <button class="sub-tab" onclick="setListTab('kaigo',this)">介護</button>
     <button class="sub-tab" onclick="setListTab('yobo',this)">支援・総合事業</button>
+    <button class="sub-tab" onclick="setListTab('zaitaku',this)">在宅</button>
+    <button class="sub-tab" onclick="setListTab('shisetsu',this)">施設別</button>
   </div>
   <div class="table-wrap">
     <table>
       <thead><tr>
         <th>氏名（年齢）</th><th>要介護度</th><th>認定有効期間</th>
-        <th>更新申請月</th><th>プラン更新月</th><th>担当者会議</th><th>モニタリング</th><th>状態</th><th></th>
+        <th>更新申請月</th><th>プラン更新月</th><th>在宅/施設</th>
+        <th>会議録</th><th>モニタリング</th><th>状態</th><th></th>
       </tr></thead>
       <tbody id="table-body"></tbody>
     </table>
-  </div>
-</div>
-
-<div id="view-cal" style="display:none">
-  <div class="cal-wrap">
-    <div class="cal-legend">
-      <div class="cal-legend-item"><div class="legend-dot" style="background:#b5d4f4"></div>担当者会議</div>
-      <div class="cal-legend-item"><div class="legend-dot" style="background:#c0dd97"></div>モニタリング</div>
-    </div>
-    <div class="cal-grid" id="cal-grid"></div>
   </div>
 </div>
 
@@ -328,15 +318,30 @@ tr.hl-green:hover td{background:#e4f2e8}
     <div class="form-row"><label>長期目標 更新月</label><div class="date-input-wrap month-wrap" id="wrap-plan-long"></div></div>
   </div>
 
-  <div class="form-section">今月の予定（月ごとに記録）</div>
+  <div class="form-section">施設・在宅情報</div>
   <div class="form-grid">
-    <div class="form-row"><label>担当者会議日</label><div class="date-input-wrap" id="wrap-meeting-date"></div></div>
-    <div class="form-row"><label>担当者会議 状態</label>
-      <select id="f-meeting-status"><option value="">-</option><option value="未定">未定</option><option value="調整中">調整中</option><option value="完了">完了</option></select>
+    <div class="form-row"><label>施設名（空欄なら在宅）</label><input id="f-facility" placeholder="〇〇施設（空欄=在宅）"></div>
+    <div class="form-row"><label>同一建物減算</label>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0">
+        <input type="checkbox" id="f-doitsu" style="width:18px;height:18px;cursor:pointer">
+        <label for="f-doitsu" style="font-size:14px;cursor:pointer;color:var(--text)">同一建物減算あり</label>
+      </div>
     </div>
-    <div class="form-row"><label>モニタリング日</label><div class="date-input-wrap" id="wrap-monitoring-date"></div></div>
-    <div class="form-row"><label>モニタリング状態</label>
-      <select id="f-monitoring-status"><option value="">-</option><option value="未訪問">未訪問</option><option value="訪問済">訪問済</option><option value="作成済">作成済</option></select>
+  </div>
+
+  <div class="form-section">今月の記録（月ごとに保存）</div>
+  <div class="form-grid">
+    <div class="form-row"><label>担当者会議録</label>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0">
+        <input type="checkbox" id="f-meeting-done" style="width:18px;height:18px;cursor:pointer">
+        <label for="f-meeting-done" style="font-size:14px;cursor:pointer;color:var(--text)">作成済</label>
+      </div>
+    </div>
+    <div class="form-row"><label>モニタリング</label>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0">
+        <input type="checkbox" id="f-monitoring-done" style="width:18px;height:18px;cursor:pointer">
+        <label for="f-monitoring-done" style="font-size:14px;cursor:pointer;color:var(--text)">作成済</label>
+      </div>
     </div>
   </div>
 
@@ -667,14 +672,12 @@ function setBirthFromIso(iso){
 function initAllDateFields(){
   buildPopupYearSelect();
   buildPopupMonthSelect();
-  ['wrap-cert-start','wrap-cert-end','wrap-meeting-date','wrap-monitoring-date',
-   'wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
+  ['wrap-cert-start','wrap-cert-end','wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
   ['wrap-plan-short','wrap-plan-long'].forEach(buildDateField);
 }
 function clearAllDateFields(){
-  ['wrap-cert-start','wrap-cert-end','wrap-meeting-date','wrap-monitoring-date',
-   'wrap-plan-short','wrap-plan-long','wrap-hospital-in','wrap-hospital-out']
-    .forEach(id=>setFieldIso(id,''));
+  ['wrap-cert-start','wrap-cert-end','wrap-plan-short','wrap-plan-long',
+   'wrap-hospital-in','wrap-hospital-out'].forEach(id=>setFieldIso(id,''));
   document.getElementById('disp-update-apply').textContent='-';
   document.getElementById('disp-update-apply').dataset.iso='';
   setBirthFromIso('');
@@ -848,10 +851,8 @@ function renderSummary(){
   const shinsei=active.filter(u=>u.kaigo==='申請中').length;
   const hospitalized=active.filter(u=>u.hospitalStatus==='入院中').length;
   const md=getMonthData(currentKey());
-  const monDone=active.filter(u=>md[u.id]&&md[u.id].monitoringStatus==='作成済').length;
-  const monPlan=active.filter(u=>md[u.id]&&(md[u.id].monitoringStatus==='訪問済'||md[u.id].monitoringStatus==='未訪問')).length;
-  const meetDone=active.filter(u=>md[u.id]&&md[u.id].meetingStatus==='完了').length;
-  const meetPlan=active.filter(u=>md[u.id]&&(md[u.id].meetingStatus==='調整中'||md[u.id].meetingStatus==='未定')).length;
+  const monDone=active.filter(u=>md[u.id]&&md[u.id].monitoringDone).length;
+  const meetDone=active.filter(u=>md[u.id]&&md[u.id].meetingDone).length;
   const applyGroups=getTimingGroups(active,'updateApply');
   const applyTotal=applyGroups.expired.length+applyGroups.lastMonth.length+applyGroups.thisMonth.length+applyGroups.nextMonth.length;
   // プラン更新：短期・長期どちらかが対象月のもの
@@ -895,9 +896,8 @@ function renderSummary(){
       <div class="scard-label">担当者会議録</div>
       <div class="scard-val">${meetDone}<span style="font-size:15px;font-weight:400"> / ${active.length}件</span></div>
       <div class="scard-rows">
-        <div class="scard-row alert-blue"><span>完了</span><strong>${meetDone}件</strong></div>
-        ${meetPlan?`<div class="scard-row alert-yellow"><span>調整中・未定</span><strong>${meetPlan}件</strong></div>`:''}
-        <div class="scard-row ${active.length-meetDone-meetPlan>0?'alert-red':'alert-none'}"><span>未設定</span><strong>${active.length-meetDone-meetPlan}件</strong></div>
+        <div class="scard-row alert-blue"><span>作成済</span><strong>${meetDone}件</strong></div>
+        <div class="scard-row ${active.length-meetDone>0?'alert-red':'alert-none'}"><span>未作成</span><strong>${active.length-meetDone}件</strong></div>
       </div>
     </div>
     <div class="scard">
@@ -905,8 +905,7 @@ function renderSummary(){
       <div class="scard-val">${monDone}<span style="font-size:15px;font-weight:400"> / ${active.length}件</span></div>
       <div class="scard-rows">
         <div class="scard-row alert-blue"><span>作成済</span><strong>${monDone}件</strong></div>
-        ${monPlan?`<div class="scard-row alert-yellow"><span>訪問済・未訪問</span><strong>${monPlan}件</strong></div>`:''}
-        <div class="scard-row ${active.length-monDone-monPlan>0?'alert-red':'alert-none'}"><span>未設定</span><strong>${active.length-monDone-monPlan}件</strong></div>
+        <div class="scard-row ${active.length-monDone>0?'alert-red':'alert-none'}"><span>未作成</span><strong>${active.length-monDone}件</strong></div>
       </div>
     </div>
   `;
@@ -924,6 +923,12 @@ function renderTable(){
   if(listTab==='all')users=users.filter(u=>!u.ended&&!u.inactive);
   else if(listTab==='kaigo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&u.kaigo.startsWith('要介護'));
   else if(listTab==='yobo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者'||u.kaigo==='申請中'));
+  else if(listTab==='zaitaku')users=users.filter(u=>!u.ended&&!u.inactive&&!u.facility);
+  else if(listTab==='shisetsu'){
+    users=users.filter(u=>!u.ended&&!u.inactive&&u.facility);
+    // 施設名でグループ表示のため施設名でソート
+    users=[...users].sort((a,b)=>(a.facility||'').localeCompare(b.facility||'','ja'));
+  }
   if(fk)users=users.filter(u=>u.kaigo===fk);
   if(fm)users=users.filter(u=>md[u.id]&&md[u.id].monitoringStatus===fm);
   if(fn)users=users.filter(u=>(u.name&&u.name.includes(fn))||(u.kana&&u.kana.includes(fn)));
@@ -938,19 +943,12 @@ function renderTable(){
       if(diff<0)certBadge='<span class="badge badge-red" style="margin-left:4px">期限切れ</span>';
       else if(diff<=60)certBadge='<span class="badge badge-yellow" style="margin-left:4px">まもなく</span>';
     }
-    // プラン更新バッジ（短期・長期どちらか近い方）
+    // プラン更新バッジ
     const planBadge=(getUpdateBadge(u.planShort)||getUpdateBadge(u.planLong));
-    // 担当者会議表示：日付から自動生成
-    let meetingDisp='-';
-    if(mon.meetingDate){
-      const d=new Date(mon.meetingDate);
-      meetingDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
-    }
-    let monitoringDisp='-';
-    if(mon.monitoringDate){
-      const d=new Date(mon.monitoringDate);
-      monitoringDisp=(d.getMonth()+1)+'月'+d.getDate()+'日';
-    }
+    // 在宅/施設バッジ
+    const facilityBadge=u.facility
+      ?`<span class="badge" style="background:#e8f0fb;color:#1a5fa8">${u.facility}</span>${u.doitsu?'<br><span class="badge badge-yellow" style="font-size:10px">同一建物減算</span>':''}`
+      :`<span class="badge" style="background:#e6f4ec;color:#2d7a4f">在宅</span>${u.doitsu?'<br><span class="badge badge-yellow" style="font-size:10px">同一建物減算</span>':''}`;
     return`<tr class="${u.inactive?'inactive':getRowHlClass(u)}">
       <td>
         <strong style="font-size:15px">${u.name||'-'}</strong>
@@ -970,23 +968,12 @@ function renderTable(){
         ${u.planShort?'短：'+toWarekiMonthStr(u.planShort):'短：-'} ${getUpdateBadge(u.planShort)}<br>
         ${u.planLong?'長：'+toWarekiMonthStr(u.planLong):'長：-'} ${getUpdateBadge(u.planLong)}
       </td>
-      <td style="font-size:13px">
-        ${meetingDisp!=='-'?`<div style="font-size:12px;color:var(--text2);margin-bottom:3px">${meetingDisp}</div>`:''}
-        <select class="inline-select" onchange="setMonthField('${u.id}','meetingStatus',this.value)">
-          <option value="" ${!mon.meetingStatus?'selected':''}>-</option>
-          <option value="未定" ${mon.meetingStatus==='未定'?'selected':''}>未定</option>
-          <option value="調整中" ${mon.meetingStatus==='調整中'?'selected':''}>調整中</option>
-          <option value="完了" ${mon.meetingStatus==='完了'?'selected':''}>完了</option>
-        </select>
+      <td>${facilityBadge}</td>
+      <td style="text-align:center">
+        <input type="checkbox" ${mon.meetingDone?'checked':''} onchange="setMonthField('${u.id}','meetingDone',this.checked)" style="width:18px;height:18px;cursor:pointer">
       </td>
-      <td>
-        ${monitoringDisp!=='-'?`<div style="font-size:12px;color:var(--text2);margin-bottom:3px">${monitoringDisp}</div>`:''}
-        <select class="inline-select" onchange="setMonthField('${u.id}','monitoringStatus',this.value)">
-          <option value="" ${!mon.monitoringStatus?'selected':''}>-</option>
-          <option value="未訪問" ${mon.monitoringStatus==='未訪問'?'selected':''}>未訪問</option>
-          <option value="訪問済" ${mon.monitoringStatus==='訪問済'?'selected':''}>訪問済</option>
-          <option value="作成済" ${mon.monitoringStatus==='作成済'?'selected':''}>作成済</option>
-        </select>
+      <td style="text-align:center">
+        <input type="checkbox" ${mon.monitoringDone?'checked':''} onchange="setMonthField('${u.id}','monitoringDone',this.checked)" style="width:18px;height:18px;cursor:pointer">
       </td>
       <td>
         <select class="inline-select" onchange="setStatus('${u.id}',this.value)">
@@ -1065,8 +1052,11 @@ function deleteUser(id){
 // ══════════════════════════════════════════
 function openModal(id){
   editingId=id||null;
-  ['f-name','f-kana','f-kaigo','f-futan','f-hoken','f-monitoring-status','f-meeting-status','f-memo','f-hospital-status','f-hospital-name']
-    .forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';})
+  ['f-name','f-kana','f-kaigo','f-futan','f-hoken','f-memo','f-hospital-status','f-hospital-name','f-facility']
+    .forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';});
+  document.getElementById('f-doitsu').checked=false;
+  document.getElementById('f-meeting-done').checked=false;
+  document.getElementById('f-monitoring-done').checked=false;
   clearAllDateFields();
   if(id){
     const u=getUsers().find(u=>u.id===id);
@@ -1085,6 +1075,8 @@ function openModal(id){
       setFieldIso('wrap-plan-long',u.planLong||'');
       document.getElementById('f-hospital-status').value=u.hospitalStatus||'';
       document.getElementById('f-hospital-name').value=u.hospitalName||'';
+      document.getElementById('f-facility').value=u.facility||'';
+      document.getElementById('f-doitsu').checked=!!u.doitsu;
       setFieldIso('wrap-hospital-in',u.hospitalIn||'');
       setFieldIso('wrap-hospital-out',u.hospitalOut||'');
       // 更新申請月表示
@@ -1094,10 +1086,8 @@ function openModal(id){
         disp.dataset.iso=u.updateApply;
       }
     }
-    document.getElementById('f-monitoring-status').value=mon.monitoringStatus||'';
-    document.getElementById('f-meeting-status').value=mon.meetingStatus||'';
-    setFieldIso('wrap-meeting-date',mon.meetingDate||'');
-    setFieldIso('wrap-monitoring-date',mon.monitoringDate||'');
+    document.getElementById('f-monitoring-done').checked=!!(mon.monitoringDone);
+    document.getElementById('f-meeting-done').checked=!!(mon.meetingDone);
     document.getElementById('modal-title-text').textContent='利用者情報を編集';
   }else{
     document.getElementById('modal-title-text').textContent='利用者を追加';
@@ -1119,6 +1109,8 @@ function saveUser(){
     certStart:getFieldIso('wrap-cert-start'),certEnd:getFieldIso('wrap-cert-end'),
     updateApply:dispUA.dataset.iso||'',
     planShort:getFieldIso('wrap-plan-short'),planLong:getFieldIso('wrap-plan-long'),
+    facility:document.getElementById('f-facility').value.trim(),
+    doitsu:document.getElementById('f-doitsu').checked,
     hospitalStatus:document.getElementById('f-hospital-status').value,
     hospitalName:document.getElementById('f-hospital-name').value,
     hospitalIn:getFieldIso('wrap-hospital-in'),
@@ -1126,10 +1118,8 @@ function saveUser(){
     memo:document.getElementById('f-memo').value,
   };
   const monthData={
-    meetingDate:getFieldIso('wrap-meeting-date'),
-    meetingStatus:document.getElementById('f-meeting-status').value,
-    monitoringDate:getFieldIso('wrap-monitoring-date'),
-    monitoringStatus:document.getElementById('f-monitoring-status').value,
+    meetingDone:document.getElementById('f-meeting-done').checked,
+    monitoringDone:document.getElementById('f-monitoring-done').checked,
   };
   const users=getUsers();
   let uid=editingId;

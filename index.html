@@ -757,7 +757,7 @@ function changeMonth(d){
   if(currentMonth>12){currentMonth=1;currentYear++}
   if(currentMonth<1){currentMonth=12;currentYear--}
   updateMonthLabel();renderSummary();
-  if(currentView==='list')renderTable();else renderCalendar();
+  renderTable();
 }
 
 // ══════════════════════════════════════════
@@ -765,11 +765,7 @@ function changeMonth(d){
 // ══════════════════════════════════════════
 function switchView(v){
   currentView=v;
-  document.getElementById('view-list').style.display=v==='list'?'':'none';
-  document.getElementById('view-cal').style.display=v==='cal'?'':'none';
-  document.getElementById('tab-list').classList.toggle('active',v==='list');
-  document.getElementById('tab-cal').classList.toggle('active',v==='cal');
-  if(v==='cal')renderCalendar();else renderTable();
+  renderTable();
 }
 function setListTab(t,el){listTab=t;document.querySelectorAll('.sub-tab').forEach(e=>e.classList.remove('active'));el.classList.add('active');renderTable();}
 function setSort(mode){sortMode=mode;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));document.getElementById('sort-'+mode)?.classList.add('active');renderTable();}
@@ -980,7 +976,6 @@ function renderTable(){
     tbody.innerHTML=users.map(u=>buildUserRow(u,md[u.id]||{})).join('');
   }
 }
-}
 
 function buildUserRow(u,mon){
   let certBadge='';
@@ -1041,40 +1036,6 @@ function buildUserRow(u,mon){
 // ══════════════════════════════════════════
 // カレンダー
 // ══════════════════════════════════════════
-function renderCalendar(){
-  const grid=document.getElementById('cal-grid');
-  const firstDay=new Date(currentYear,currentMonth-1,1).getDay();
-  const daysInMonth=new Date(currentYear,currentMonth,0).getDate();
-  const today=new Date();
-  const users=getUsers().filter(u=>!u.ended&&!u.inactive);
-  const md=getMonthData(currentKey());
-  const evMap={};
-  users.forEach(u=>{
-    const mon=md[u.id]||{};
-    ['meetingDate','monitoringDate'].forEach(key=>{
-      if(mon[key]){
-        const d=new Date(mon[key]);
-        if(d.getFullYear()===currentYear&&d.getMonth()+1===currentMonth){
-          const day=d.getDate();if(!evMap[day])evMap[day]=[];
-          evMap[day].push({type:key==='meetingDate'?'meeting':'monitoring',name:u.name});
-        }
-      }
-    });
-  });
-  const dow=['日','月','火','水','木','金','土'];
-  let html=dow.map((d,i)=>`<div class="cal-header${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('');
-  for(let i=0;i<firstDay;i++)html+=`<div class="cal-day other-month"></div>`;
-  for(let d=1;d<=daysInMonth;d++){
-    const w=new Date(currentYear,currentMonth-1,d).getDay();
-    const isToday=today.getFullYear()===currentYear&&today.getMonth()+1===currentMonth&&today.getDate()===d;
-    let cls='cal-day';if(w===0)cls+=' sun';if(w===6)cls+=' sat';if(isToday)cls+=' today';
-    const evs=(evMap[d]||[]).map(e=>`<div class="cal-event ${e.type==='meeting'?'ev-meeting':'ev-monitoring'}">${e.name}</div>`).join('');
-    html+=`<div class="${cls}"><span class="cal-day-num">${d}</span>${evs}</div>`;
-  }
-  const trail=(7-(firstDay+daysInMonth)%7)%7;
-  for(let i=0;i<trail;i++)html+=`<div class="cal-day other-month"></div>`;
-  grid.innerHTML=html;
-}
 
 // ══════════════════════════════════════════
 // データ操作
@@ -1170,7 +1131,7 @@ function saveUser(){
   saveUsers(users);
   setMonthData(currentKey(),uid,monthData);
   closeModal();renderSummary();
-  if(currentView==='list')renderTable();else renderCalendar();
+  renderTable();
   showToast(editingId?'更新しました':'登録しました');
 }
 
@@ -1228,8 +1189,8 @@ function loadBackup(e){
         showToast('読み込み完了');
       }
       renderSummary();
-      if(currentView==='list')renderTable();else renderCalendar();
-    }catch{alert('ファイルの読み込みに失敗しました。');}
+      renderTable();
+    }catch(err){alert('ファイルの読み込みに失敗しました。'+err.message);}
   };
   r.readAsText(f);e.target.value='';
 }

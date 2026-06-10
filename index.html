@@ -914,7 +914,26 @@ function renderSummary(){
 // ══════════════════════════════════════════
 // テーブル
 // ══════════════════════════════════════════
+function updateTabCounts(){
+  const all=getUsers().filter(u=>!u.ended&&!u.inactive);
+  const kaigo=all.filter(u=>u.kaigo&&u.kaigo.startsWith('要介護'));
+  const yobo=all.filter(u=>u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者'||u.kaigo==='申請中'));
+  const zaitaku=all.filter(u=>!u.facility);
+  const shisetsu=all.filter(u=>u.facility);
+  const tabs=[
+    {tab:'all',label:`全員（${all.length}）`},
+    {tab:'kaigo',label:`介護（${kaigo.length}）`},
+    {tab:'yobo',label:`支援・総合事業（${yobo.length}）`},
+    {tab:'zaitaku',label:`在宅（${zaitaku.length}）`},
+    {tab:'shisetsu',label:`施設別（${shisetsu.length}）`},
+  ];
+  document.querySelectorAll('.sub-tab').forEach((btn,i)=>{
+    if(tabs[i])btn.textContent=tabs[i].label;
+  });
+}
+
 function renderTable(){
+  updateTabCounts();
   let users=getUsers();
   const md=getMonthData(currentKey());
   const fk=document.getElementById('filter-kaigo').value;
@@ -924,76 +943,99 @@ function renderTable(){
   else if(listTab==='kaigo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&u.kaigo.startsWith('要介護'));
   else if(listTab==='yobo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者'||u.kaigo==='申請中'));
   else if(listTab==='zaitaku')users=users.filter(u=>!u.ended&&!u.inactive&&!u.facility);
-  else if(listTab==='shisetsu'){
-    users=users.filter(u=>!u.ended&&!u.inactive&&u.facility);
-    // 施設名でグループ表示のため施設名でソート
-    users=[...users].sort((a,b)=>(a.facility||'').localeCompare(b.facility||'','ja'));
-  }
+  else if(listTab==='shisetsu')users=users.filter(u=>!u.ended&&!u.inactive&&u.facility);
   if(fk)users=users.filter(u=>u.kaigo===fk);
-  if(fm)users=users.filter(u=>md[u.id]&&md[u.id].monitoringStatus===fm);
+  if(fm)users=users.filter(u=>md[u.id]&&md[u.id].monitoringDone===(fm==='済'));
   if(fn)users=users.filter(u=>(u.name&&u.name.includes(fn))||(u.kana&&u.kana.includes(fn)));
-  users=sortUsers(users);
+
+  // 施設別タブは施設名グループ→その中をあいうえお順
+  if(listTab==='shisetsu'){
+    users=[...users].sort((a,b)=>{
+      const fa=a.facility||'', fb=b.facility||'';
+      if(fa!==fb)return fa.localeCompare(fb,'ja');
+      return(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja');
+    });
+  } else {
+    users=sortUsers(users);
+  }
+
   const tbody=document.getElementById('table-body');
-  if(!users.length){tbody.innerHTML=`<tr><td colspan="9"><div class="empty">利用者がいません</div></td></tr>`;return;}
-  tbody.innerHTML=users.map(u=>{
-    const mon=md[u.id]||{};
-    let certBadge='';
-    if(u.certEnd){
-      const diff=Math.floor((new Date(u.certEnd)-new Date(new Date().toDateString()))/(86400000));
-      if(diff<0)certBadge='<span class="badge badge-red" style="margin-left:4px">期限切れ</span>';
-      else if(diff<=60)certBadge='<span class="badge badge-yellow" style="margin-left:4px">まもなく</span>';
-    }
-    // プラン更新バッジ
-    const planBadge=(getUpdateBadge(u.planShort)||getUpdateBadge(u.planLong));
-    // 在宅/施設バッジ
-    const facilityBadge=u.facility
-      ?`<span class="badge" style="background:#e8f0fb;color:#1a5fa8">${u.facility}</span>${u.doitsu?'<br><span class="badge badge-yellow" style="font-size:10px">同一建物減算</span>':''}`
-      :`<span class="badge" style="background:#e6f4ec;color:#2d7a4f">在宅</span>${u.doitsu?'<br><span class="badge badge-yellow" style="font-size:10px">同一建物減算</span>':''}`;
-    return`<tr class="${u.inactive?'inactive':getRowHlClass(u)}">
-      <td>
-        <strong style="font-size:15px">${u.name||'-'}</strong>
-        ${u.hospitalStatus==='入院中'?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
-        ${u.birth?` <span style="font-size:12px;color:var(--text3)">(${calcAge(u.birth)}歳)</span>`:''}
-        ${u.kana?`<br><span style="font-size:11px;color:var(--text3)">${u.kana}</span>`:''}
-      </td>
-      <td>
-        <span class="badge ${getKaigoBadgeClass(u.kaigo)}">${u.kaigo||'-'}</span>
-        ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
-      </td>
-      <td style="font-size:13px;line-height:1.8">
-        ${toWarekiStr(u.certStart)}<br>${toWarekiStr(u.certEnd)}${certBadge}
-      </td>
-      <td style="font-size:13px">${u.updateApply?toWarekiMonthStr(u.updateApply):'-'}<br>${getUpdateBadge(u.updateApply)}</td>
-      <td style="font-size:12px;line-height:1.8">
-        ${u.planShort?'短：'+toWarekiMonthStr(u.planShort):'短：-'} ${getUpdateBadge(u.planShort)}<br>
-        ${u.planLong?'長：'+toWarekiMonthStr(u.planLong):'長：-'} ${getUpdateBadge(u.planLong)}
-      </td>
-      <td>${facilityBadge}</td>
-      <td style="text-align:center">
-        <input type="checkbox" ${mon.meetingDone?'checked':''} onchange="setMonthField('${u.id}','meetingDone',this.checked)" style="width:18px;height:18px;cursor:pointer">
-      </td>
-      <td style="text-align:center">
-        <input type="checkbox" ${mon.monitoringDone?'checked':''} onchange="setMonthField('${u.id}','monitoringDone',this.checked)" style="width:18px;height:18px;cursor:pointer">
-      </td>
-      <td>
-        <select class="inline-select" onchange="setStatus('${u.id}',this.value)">
-          <option value="active" ${!u.inactive&&!u.ended?'selected':''}>利用中</option>
-          <option value="inactive" ${u.inactive?'selected':''}>未利用</option>
-          <option value="ended" ${u.ended?'selected':''}>終了</option>
-        </select>
-      </td>
-      <td>
-        <div class="action-cell">
-          <button class="icon-btn" onclick="openModal('${u.id}')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="icon-btn danger" onclick="deleteUser('${u.id}')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+  if(!users.length){tbody.innerHTML=`<tr><td colspan="10"><div class="empty">利用者がいません</div></td></tr>`;return;}
+
+  // 施設別タブは施設名ヘッダーを挿入
+  if(listTab==='shisetsu'){
+    let html='';
+    let currentFacility=null;
+    users.forEach(u=>{
+      const mon=md[u.id]||{};
+      if(u.facility!==currentFacility){
+        currentFacility=u.facility;
+        const count=users.filter(x=>x.facility===currentFacility).length;
+        html+=`<tr><td colspan="10" style="background:var(--blue-light);color:var(--blue);font-weight:700;font-size:14px;padding:8px 16px;border-bottom:1px solid var(--border)">🏢 ${currentFacility}　${count}名</td></tr>`;
+      }
+      html+=buildUserRow(u,mon);
+    });
+    tbody.innerHTML=html;
+  } else {
+    tbody.innerHTML=users.map(u=>buildUserRow(u,md[u.id]||{})).join('');
+  }
+}
+}
+
+function buildUserRow(u,mon){
+  let certBadge='';
+  if(u.certEnd){
+    const diff=Math.floor((new Date(u.certEnd)-new Date(new Date().toDateString()))/(86400000));
+    if(diff<0)certBadge='<span class="badge badge-red" style="margin-left:4px">期限切れ</span>';
+    else if(diff<=60)certBadge='<span class="badge badge-yellow" style="margin-left:4px">まもなく</span>';
+  }
+  const facilityBadge=u.facility
+    ?`<span class="badge" style="background:#e8f0fb;color:#1a5fa8">${u.facility}</span>${u.doitsu?'<br><span class="badge badge-yellow" style="font-size:10px">同一建物減算</span>':''}`
+    :`<span class="badge" style="background:#e6f4ec;color:#2d7a4f">在宅</span>${u.doitsu?'<br><span class="badge badge-yellow" style="font-size:10px">同一建物減算</span>':''}`;
+  return`<tr class="${u.inactive?'inactive':getRowHlClass(u)}">
+    <td>
+      <strong style="font-size:15px">${u.name||'-'}</strong>
+      ${u.hospitalStatus==='入院中'?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
+      ${u.birth?` <span style="font-size:12px;color:var(--text3)">(${calcAge(u.birth)}歳)</span>`:''}
+      ${u.kana?`<br><span style="font-size:11px;color:var(--text3)">${u.kana}</span>`:''}
+    </td>
+    <td>
+      <span class="badge ${getKaigoBadgeClass(u.kaigo)}">${u.kaigo||'-'}</span>
+      ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
+    </td>
+    <td style="font-size:13px;line-height:1.8">
+      ${toWarekiStr(u.certStart)}<br>${toWarekiStr(u.certEnd)}${certBadge}
+    </td>
+    <td style="font-size:13px">${u.updateApply?toWarekiMonthStr(u.updateApply):'-'}<br>${getUpdateBadge(u.updateApply)}</td>
+    <td style="font-size:12px;line-height:1.8">
+      ${u.planShort?'短：'+toWarekiMonthStr(u.planShort):'短：-'} ${getUpdateBadge(u.planShort)}<br>
+      ${u.planLong?'長：'+toWarekiMonthStr(u.planLong):'長：-'} ${getUpdateBadge(u.planLong)}
+    </td>
+    <td>${facilityBadge}</td>
+    <td style="text-align:center">
+      <input type="checkbox" ${mon.meetingDone?'checked':''} onchange="setMonthField('${u.id}','meetingDone',this.checked)" style="width:18px;height:18px;cursor:pointer">
+    </td>
+    <td style="text-align:center">
+      <input type="checkbox" ${mon.monitoringDone?'checked':''} onchange="setMonthField('${u.id}','monitoringDone',this.checked)" style="width:18px;height:18px;cursor:pointer">
+    </td>
+    <td>
+      <select class="inline-select" onchange="setStatus('${u.id}',this.value)">
+        <option value="active" ${!u.inactive&&!u.ended?'selected':''}>利用中</option>
+        <option value="inactive" ${u.inactive?'selected':''}>未利用</option>
+        <option value="ended" ${u.ended?'selected':''}>終了</option>
+      </select>
+    </td>
+    <td>
+      <div class="action-cell">
+        <button class="icon-btn" onclick="openModal('${u.id}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="icon-btn danger" onclick="deleteUser('${u.id}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </td>
+  </tr>`;
 }
 
 // ══════════════════════════════════════════

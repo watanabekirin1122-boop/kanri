@@ -348,7 +348,7 @@ tr.hl-green:hover td{background:#e4f2e8}
   <div class="form-section">入院情報</div>
   <div class="form-grid">
     <div class="form-row"><label>入院状態</label>
-      <select id="f-hospital-status"><option value="">-</option><option value="入院中">入院中</option><option value="退院済">退院済</option></select>
+      <select id="f-hospital-status"><option value="">-</option><option value="入院中">入院中</option></select>
     </div>
     <div class="form-row"><label>入院先</label><input id="f-hospital-name" placeholder="〇〇病院"></div>
     <div class="form-row"><label>入院日</label><div class="date-input-wrap" id="wrap-hospital-in"></div></div>
@@ -713,6 +713,17 @@ function getUpdateBadge(s){
 }
 const KAIGO_ORDER={'要介護5':0,'要介護4':1,'要介護3':2,'要介護2':3,'要介護1':4,'要支援2':5,'要支援1':6,'事業対象者':7,'申請中':8,'':9};
 
+// 現在入院中かどうかを判定（退院日が今日以前なら退院済とみなす）
+function isCurrentlyHospitalized(u){
+  if(u.hospitalStatus!=='入院中')return false;
+  if(u.hospitalOut){
+    const outDate=new Date(u.hospitalOut);
+    const today=new Date(new Date().toDateString());
+    if(outDate<=today)return false; // 退院日が今日以前なら退院済扱い
+  }
+  return true;
+}
+
 function getKaigoBadgeClass(kaigo){
   if(!kaigo)return'badge-gray';
   if(kaigo==='要支援1'||kaigo==='要支援2'||kaigo==='事業対象者')return'badge-kaigo-yoyo';
@@ -845,7 +856,7 @@ function renderSummary(){
   const kaigo=active.filter(u=>u.kaigo&&u.kaigo.startsWith('要介護')).length;
   const yobo=active.filter(u=>u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者')).length;
   const shinsei=active.filter(u=>u.kaigo==='申請中').length;
-  const hospitalized=active.filter(u=>u.hospitalStatus==='入院中').length;
+  const hospitalized=active.filter(u=>isCurrentlyHospitalized(u)).length;
   const md=getMonthData(currentKey());
   const monDone=active.filter(u=>md[u.id]&&md[u.id].monitoringDone).length;
   const meetDone=active.filter(u=>md[u.id]&&md[u.id].meetingDone).length;
@@ -990,7 +1001,7 @@ function buildUserRow(u,mon){
   return`<tr class="${u.inactive?'inactive':getRowHlClass(u)}">
     <td>
       <strong style="font-size:15px">${u.name||'-'}</strong>
-      ${u.hospitalStatus==='入院中'?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
+      ${isCurrentlyHospitalized(u)?'<span class="badge badge-orange" style="margin-left:5px">🏥 入院中</span>':''}
       ${u.birth?` <span style="font-size:12px;color:var(--text3)">(${calcAge(u.birth)}歳)</span>`:''}
       ${u.kana?`<br><span style="font-size:11px;color:var(--text3)">${u.kana}</span>`:''}
     </td>

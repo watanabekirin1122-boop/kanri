@@ -299,18 +299,13 @@ tr.hl-green:hover td{background:#e4f2e8}
     <div class="form-row"><label>被保険者番号</label><input id="f-hoken"></div>
   </div>
 
-  <div class="form-section">認定情報</div>
-  <div class="form-grid">
-    <div class="form-row"><label>認定有効期間（開始）</label><div class="date-input-wrap" id="wrap-cert-start"></div></div>
-    <div class="form-row">
-      <label>認定有効期間（終了）<span style="font-size:11px;color:var(--blue);margin-left:4px">→更新月自動計算</span></label>
-      <div class="date-input-wrap" id="wrap-cert-end"></div>
-    </div>
-    <div class="form-row">
-      <label>更新申請月<span style="font-size:11px;color:var(--text3);margin-left:4px">（自動：終了1ヶ月前）</span></label>
-      <div id="disp-update-apply" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);font-size:14px;background:var(--surface2);color:var(--text2);min-height:38px">-</div>
-    </div>
-  </div>
+  <div class="form-section">認定情報（履歴管理）</div>
+  <div id="cert-history-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+  <button class="btn" type="button" onclick="addCertPeriod()" style="margin-bottom:6px">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    認定期間を追加
+  </button>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:4px">※終了日を入れると更新申請月（終了1ヶ月前）を自動計算します。複数の期間を登録すると、各月の画面でその時点の期間が自動表示されます。</div>
 
   <div class="form-section">プラン情報（短期・長期目標）</div>
   <div class="form-grid">
@@ -550,13 +545,29 @@ function renderPopupCal(){
 function selectDate(iso){
   setFieldIso(activeFieldId,iso);
   closeAllPopups();
-  // 認定終了日を選んだ場合、更新申請月を自動計算
-  if(activeFieldId==='wrap-cert-end')calcUpdateApply();
-  // 担当者会議日を選んだ場合、表示用テキスト自動生成（月次データ）
-  // meeting表示はtable側で自動
+  // 動的な認定期間フィールドの場合（wrap-cert-start-N / wrap-cert-end-N）
+  if(activeFieldId.startsWith('wrap-cert-start-')){
+    const idx=parseInt(activeFieldId.replace('wrap-cert-start-',''));
+    onCertPeriodStartChange(idx);
+  }
+  if(activeFieldId.startsWith('wrap-cert-end-')){
+    const idx=parseInt(activeFieldId.replace('wrap-cert-end-',''));
+    onCertPeriodEndChange(idx);
+  }
 }
 function selectToday(){selectDate(new Date().toISOString().slice(0,10));}
-function clearDateField(){setFieldIso(activeFieldId,'');closeAllPopups();if(activeFieldId==='wrap-cert-end')calcUpdateApply();}
+function clearDateField(){
+  setFieldIso(activeFieldId,'');
+  closeAllPopups();
+  if(activeFieldId.startsWith('wrap-cert-start-')){
+    const idx=parseInt(activeFieldId.replace('wrap-cert-start-',''));
+    onCertPeriodStartChange(idx);
+  }
+  if(activeFieldId.startsWith('wrap-cert-end-')){
+    const idx=parseInt(activeFieldId.replace('wrap-cert-end-',''));
+    onCertPeriodEndChange(idx);
+  }
+}
 
 // 月ポップアップ
 function renderMonthPopup(){
@@ -672,29 +683,87 @@ function setBirthFromIso(iso){
 function initAllDateFields(){
   buildPopupYearSelect();
   buildPopupMonthSelect();
-  ['wrap-cert-start','wrap-cert-end','wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
+  ['wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
   ['wrap-plan-short','wrap-plan-long'].forEach(buildDateField);
 }
 function clearAllDateFields(){
-  ['wrap-cert-start','wrap-cert-end','wrap-plan-short','wrap-plan-long',
+  ['wrap-plan-short','wrap-plan-long',
    'wrap-hospital-in','wrap-hospital-out'].forEach(id=>setFieldIso(id,''));
-  document.getElementById('disp-update-apply').textContent='-';
-  document.getElementById('disp-update-apply').dataset.iso='';
   setBirthFromIso('');
 }
 
 // ══════════════════════════════════════════
 // 認定終了日→更新申請月 自動計算
 // ══════════════════════════════════════════
-function calcUpdateApply(){
-  const endIso=getFieldIso('wrap-cert-end');
-  const disp=document.getElementById('disp-update-apply');
-  if(!endIso){disp.textContent='-';disp.dataset.iso='';return;}
+// ══════════════════════════════════════════
+// 認定期間履歴の管理（モーダル内）
+// ══════════════════════════════════════════
+let certHistoryWorking=[]; // 編集中の認定期間履歴（配列）
+
+function calcUpdateApplyFromEnd(endIso){
+  if(!endIso)return'';
   const d=new Date(endIso);
   let y=d.getFullYear(),m=d.getMonth()+1-1;
   if(m<1){m+=12;y--;}
-  disp.textContent=toWarekiMonthStr(`${y}-${String(m).padStart(2,'0')}`);
-  disp.dataset.iso=`${y}-${String(m).padStart(2,'0')}`;
+  return`${y}-${String(m).padStart(2,'0')}`;
+}
+
+function addCertPeriod(){
+  certHistoryWorking.push({certStart:'',certEnd:'',updateApply:''});
+  renderCertHistoryList();
+}
+function removeCertPeriod(idx){
+  certHistoryWorking.splice(idx,1);
+  renderCertHistoryList();
+}
+function onCertPeriodEndChange(idx){
+  const endIso=getFieldIso('wrap-cert-end-'+idx);
+  certHistoryWorking[idx].certEnd=endIso;
+  certHistoryWorking[idx].updateApply=calcUpdateApplyFromEnd(endIso);
+  refreshCertHistoryLabels();
+}
+function onCertPeriodStartChange(idx){
+  certHistoryWorking[idx].certStart=getFieldIso('wrap-cert-start-'+idx);
+}
+function refreshCertHistoryLabels(){
+  // 更新申請月の表示だけを更新（フィールド再構築はしない）
+  certHistoryWorking.forEach((c,i)=>{
+    const el=document.querySelector(`#cert-history-list [data-apply-label="${i}"]`);
+    if(el)el.textContent='更新申請月：'+(c.updateApply?toWarekiMonthStr(c.updateApply):'-');
+  });
+}
+
+function renderCertHistoryList(){
+  const container=document.getElementById('cert-history-list');
+  if(!certHistoryWorking.length){
+    container.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">認定期間が登録されていません</div>';
+    return;
+  }
+  // 開始日でソートして表示（古い順）
+  const sorted=certHistoryWorking.map((c,i)=>({...c,_idx:i})).sort((a,b)=>(a.certStart||'').localeCompare(b.certStart||''));
+  container.innerHTML=sorted.map(c=>{
+    const i=c._idx;
+    return`<div style="border:1px solid var(--border);border-radius:var(--r);padding:10px;background:var(--surface2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:var(--text2)">認定期間 ${sorted.indexOf(c)+1}</span>
+        <button type="button" onclick="removeCertPeriod(${i})" style="border:none;background:none;cursor:pointer;color:var(--red);font-size:12px;display:flex;align-items:center;gap:3px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>削除
+        </button>
+      </div>
+      <div class="form-grid">
+        <div class="form-row"><label>開始日</label><div class="date-input-wrap" id="wrap-cert-start-${i}"></div></div>
+        <div class="form-row"><label>終了日</label><div class="date-input-wrap" id="wrap-cert-end-${i}"></div></div>
+      </div>
+      <div style="font-size:12px;color:var(--blue);margin-top:6px" data-apply-label="${i}">更新申請月：${c.updateApply?toWarekiMonthStr(c.updateApply):'-'}</div>
+    </div>`;
+  }).join('');
+  // 各フィールドを構築して値を反映
+  certHistoryWorking.forEach((c,i)=>{
+    buildDateField('wrap-cert-start-'+i);
+    buildDateField('wrap-cert-end-'+i);
+    setFieldIso('wrap-cert-start-'+i,c.certStart||'');
+    setFieldIso('wrap-cert-end-'+i,c.certEnd||'');
+  });
 }
 
 // ══════════════════════════════════════════
@@ -724,6 +793,33 @@ function isCurrentlyHospitalized(u){
   return true;
 }
 
+// 認定期間履歴から、指定した年月時点で有効な期間を取得
+// certHistory: [{certStart, certEnd, updateApply}, ...] 開始日でソートされている前提
+function getCertForMonth(u,year,month){
+  const hist=u.certHistory||[];
+  if(!hist.length)return null;
+  const targetDate=new Date(year,month-1,1);
+  // 開始日が targetDate 以前で、最も新しい（開始日が一番遅い）ものを選ぶ
+  let best=null;
+  hist.forEach(c=>{
+    if(!c.certStart)return;
+    const s=new Date(c.certStart);
+    if(s<=targetDate||s.getFullYear()===year&&s.getMonth()+1===month){
+      if(!best||new Date(c.certStart)>new Date(best.certStart))best=c;
+    }
+  });
+  // 該当がなければ一番古い（最初の）期間を返す
+  if(!best){
+    best=[...hist].sort((a,b)=>(a.certStart||'').localeCompare(b.certStart||''))[0];
+  }
+  return best;
+}
+// 現在（今日時点）有効な認定期間を取得（一覧の介護度別件数などに使用）
+function getCurrentCert(u){
+  const now=new Date();
+  return getCertForMonth(u,now.getFullYear(),now.getMonth()+1);
+}
+
 function getKaigoBadgeClass(kaigo){
   if(!kaigo)return'badge-gray';
   if(kaigo==='要支援1'||kaigo==='要支援2'||kaigo==='事業対象者')return'badge-kaigo-yoyo';
@@ -736,8 +832,10 @@ function getKaigoBadgeClass(kaigo){
 
 function getRowHlClass(u){
   // 優先順位：期限切れ・先月 > 今月 > 来月 > プラン更新
-  if(u.updateApply){
-    const[y,m]=u.updateApply.split('-').map(Number);
+  const cert=getCertForMonth(u,currentYear,currentMonth);
+  const updateApply=cert?cert.updateApply:'';
+  if(updateApply){
+    const[y,m]=updateApply.split('-').map(Number);
     const diff=(y*12+m)-(currentYear*12+currentMonth);
     if(diff<=-1)return'hl-red';
     if(diff===0)return'hl-blue';
@@ -782,7 +880,11 @@ function setListTab(t,el){listTab=t;document.querySelectorAll('.sub-tab').forEac
 function setSort(mode){sortMode=mode;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));document.getElementById('sort-'+mode)?.classList.add('active');renderTable();}
 function sortUsers(users){
   if(sortMode==='kana')return[...users].sort((a,b)=>(a.kana||a.name||'').replace(/\s/g,'').localeCompare((b.kana||b.name||'').replace(/\s/g,''),'ja'));
-  if(sortMode==='cert')return[...users].sort((a,b)=>(a.certEnd||'9999').localeCompare(b.certEnd||'9999'));
+  if(sortMode==='cert')return[...users].sort((a,b)=>{
+    const ca=getCertForMonth(a,currentYear,currentMonth);
+    const cb=getCertForMonth(b,currentYear,currentMonth);
+    return((ca&&ca.certEnd)||'9999').localeCompare((cb&&cb.certEnd)||'9999');
+  });
   if(sortMode==='kaigo')return[...users].sort((a,b)=>{const oa=KAIGO_ORDER[a.kaigo]??9,ob=KAIGO_ORDER[b.kaigo]??9;if(oa!==ob)return oa-ob;return(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja');});
   return users;
 }
@@ -791,20 +893,24 @@ function sortUsers(users){
 // サマリー
 // ══════════════════════════════════════════
 function getTimingGroups(users,field){
-  const lastMonth=[],thisMonth=[],nextMonth=[];
+  const expired=[],lastMonth=[],thisMonth=[],nextMonth=[];
   users.forEach(u=>{
-    const s=u[field];if(!s)return;
+    let s;
+    if(field==='updateApply'){
+      const cert=getCertForMonth(u,currentYear,currentMonth);
+      s=cert?cert.updateApply:'';
+    }else{
+      s=u[field];
+    }
+    if(!s)return;
     const[y,m]=s.split('-').map(Number);
     const diff=(y*12+m)-(currentYear*12+currentMonth);
-    if(diff===-1)lastMonth.push(u);
+    if(diff<=-2)expired.push(u);
+    else if(diff===-1)lastMonth.push(u);
     else if(diff===0)thisMonth.push(u);
     else if(diff===1)nextMonth.push(u);
   });
-  const certExpired=field==='updateApply'?users.filter(u=>{
-    if(!u.certEnd)return false;
-    return new Date(u.certEnd)<new Date(new Date().toDateString());
-  }):[];
-  return{expired:certExpired,lastMonth,thisMonth,nextMonth};
+  return{expired,lastMonth,thisMonth,nextMonth};
 }
 function getSummaryChecked(){
   try{return JSON.parse(localStorage.getItem('cm_summary_checked_'+currentKey())||'{}')}catch{return{}}
@@ -989,9 +1095,10 @@ function renderTable(){
 }
 
 function buildUserRow(u,mon){
+  const cert=getCertForMonth(u,currentYear,currentMonth)||{};
   let certBadge='';
-  if(u.certEnd){
-    const diff=Math.floor((new Date(u.certEnd)-new Date(new Date().toDateString()))/(86400000));
+  if(cert.certEnd){
+    const diff=Math.floor((new Date(cert.certEnd)-new Date(new Date().toDateString()))/(86400000));
     if(diff<0)certBadge='<span class="badge badge-red" style="margin-left:4px">期限切れ</span>';
     else if(diff<=60)certBadge='<span class="badge badge-yellow" style="margin-left:4px">まもなく</span>';
   }
@@ -1010,9 +1117,9 @@ function buildUserRow(u,mon){
       ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
     </td>
     <td style="font-size:13px;line-height:1.8">
-      ${toWarekiStr(u.certStart)}<br>${toWarekiStr(u.certEnd)}${certBadge}
+      ${toWarekiStr(cert.certStart)}<br>${toWarekiStr(cert.certEnd)}${certBadge}
     </td>
-    <td style="font-size:13px">${u.updateApply?toWarekiMonthStr(u.updateApply):'-'}<br>${getUpdateBadge(u.updateApply)}</td>
+    <td style="font-size:13px">${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>${getUpdateBadge(cert.updateApply)}</td>
     <td style="font-size:12px;line-height:1.8">
       ${u.planShort?'短：'+toWarekiMonthStr(u.planShort):'短：-'} ${getUpdateBadge(u.planShort)}<br>
       ${u.planLong?'長：'+toWarekiMonthStr(u.planLong):'長：-'} ${getUpdateBadge(u.planLong)}
@@ -1072,6 +1179,8 @@ function openModal(id){
   document.getElementById('f-meeting-done').checked=false;
   document.getElementById('f-monitoring-done').checked=false;
   clearAllDateFields();
+  certHistoryWorking=[];
+  renderCertHistoryList();
   if(id){
     const u=getUsers().find(u=>u.id===id);
     const mon=getMonthData(currentKey())[id]||{};
@@ -1083,8 +1192,10 @@ function openModal(id){
       document.getElementById('f-hoken').value=u.hoken||'';
       document.getElementById('f-memo').value=u.memo||'';
       setBirthFromIso(u.birth||'');
-      setFieldIso('wrap-cert-start',u.certStart||'');
-      setFieldIso('wrap-cert-end',u.certEnd||'');
+      certHistoryWorking=u.certHistory?JSON.parse(JSON.stringify(u.certHistory)):
+        // 旧データ（certStart/certEnd単体）からの移行
+        (u.certStart||u.certEnd?[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd)}]:[]);
+      renderCertHistoryList();
       setFieldIso('wrap-plan-short',u.planShort||'');
       setFieldIso('wrap-plan-long',u.planLong||'');
       document.getElementById('f-hospital-status').value=u.hospitalStatus||'';
@@ -1093,12 +1204,6 @@ function openModal(id){
       document.getElementById('f-doitsu').checked=!!u.doitsu;
       setFieldIso('wrap-hospital-in',u.hospitalIn||'');
       setFieldIso('wrap-hospital-out',u.hospitalOut||'');
-      // 更新申請月表示
-      if(u.updateApply){
-        const disp=document.getElementById('disp-update-apply');
-        disp.textContent=toWarekiMonthStr(u.updateApply);
-        disp.dataset.iso=u.updateApply;
-      }
     }
     document.getElementById('f-monitoring-done').checked=!!(mon.monitoringDone);
     document.getElementById('f-meeting-done').checked=!!(mon.meetingDone);
@@ -1114,14 +1219,14 @@ function closeModalBg(e){if(e.target===document.getElementById('modal-bg'))close
 function saveUser(){
   const name=document.getElementById('f-name').value.trim();
   if(!name){alert('氏名を入力してください');return;}
-  const dispUA=document.getElementById('disp-update-apply');
+  // 認定期間履歴を確定（空の期間は除外）
+  const certHistory=certHistoryWorking.filter(c=>c.certStart||c.certEnd);
   const userData={
     name,kana:document.getElementById('f-kana').value.trim(),
     birth:getBirthIso(),
     kaigo:document.getElementById('f-kaigo').value,futan:document.getElementById('f-futan').value,
     hoken:document.getElementById('f-hoken').value,
-    certStart:getFieldIso('wrap-cert-start'),certEnd:getFieldIso('wrap-cert-end'),
-    updateApply:dispUA.dataset.iso||'',
+    certHistory,
     planShort:getFieldIso('wrap-plan-short'),planLong:getFieldIso('wrap-plan-long'),
     facility:document.getElementById('f-facility').value.trim(),
     doitsu:document.getElementById('f-doitsu').checked,
@@ -1195,7 +1300,17 @@ function loadBackup(e){
       }
       // 新形式：{users, monthly}
       else{
-        if(parsed.users)saveUsers(parsed.users);
+        if(parsed.users){
+          // 旧データ（certStart/certEnd単体）をcertHistoryに移行
+          const migratedUsers=parsed.users.map(u=>{
+            if(!u.certHistory&&(u.certStart||u.certEnd)){
+              u.certHistory=[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd)}];
+            }
+            if(!u.certHistory)u.certHistory=[];
+            return u;
+          });
+          saveUsers(migratedUsers);
+        }
         if(parsed.monthly)saveMonthly(parsed.monthly);
         showToast('読み込み完了');
       }

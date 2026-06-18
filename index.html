@@ -288,13 +288,6 @@ tr.hl-green:hover td{background:#e4f2e8}
         <span id="age-display" style="font-size:13px;color:var(--blue);font-weight:700;min-width:50px"></span>
       </div>
     </div>
-    <div class="form-row"><label>要介護度</label>
-      <select id="f-kaigo">
-        <option value="">-</option><option>要介護1</option><option>要介護2</option><option>要介護3</option>
-        <option>要介護4</option><option>要介護5</option><option>要支援1</option><option>要支援2</option>
-        <option>事業対象者</option><option>申請中</option>
-      </select>
-    </div>
     <div class="form-row"><label>負担割合</label><select id="f-futan"><option value="">-</option><option>1割</option><option>2割</option><option>3割</option><option>みなし2号</option><option>生活保護</option></select></div>
     <div class="form-row"><label>被保険者番号</label><input id="f-hoken"></div>
   </div>
@@ -307,11 +300,26 @@ tr.hl-green:hover td{background:#e4f2e8}
   </button>
   <div style="font-size:11px;color:var(--text3);margin-bottom:4px">※終了日を入れると更新申請月（終了1ヶ月前）を自動計算します。複数の期間を登録すると、各月の画面でその時点の期間が自動表示されます。</div>
 
-  <div class="form-section">プラン情報（短期・長期目標）</div>
+  <div class="form-section">プラン情報（短期・長期目標／履歴管理）</div>
   <div class="form-grid">
-    <div class="form-row"><label>短期目標 更新月</label><div class="date-input-wrap month-wrap" id="wrap-plan-short"></div></div>
-    <div class="form-row"><label>長期目標 更新月</label><div class="date-input-wrap month-wrap" id="wrap-plan-long"></div></div>
+    <div class="form-row">
+      <label>短期目標 更新月の履歴</label>
+      <div id="plan-short-history-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
+      <button class="btn" type="button" onclick="addPlanMonth('short')" style="font-size:12px;padding:5px 10px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        短期目標の更新月を追加
+      </button>
+    </div>
+    <div class="form-row">
+      <label>長期目標 更新月の履歴</label>
+      <div id="plan-long-history-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
+      <button class="btn" type="button" onclick="addPlanMonth('long')" style="font-size:12px;padding:5px 10px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        長期目標の更新月を追加
+      </button>
+    </div>
   </div>
+  <div style="font-size:11px;color:var(--text3);margin-top:4px">※新しい更新月を追加しても、過去に登録した更新月とそのチェック状態は消えません。各月の画面ではその時点で対象になる更新月が自動で表示されます。</div>
 
   <div class="form-section">施設・在宅情報</div>
   <div class="form-grid">
@@ -588,8 +596,23 @@ function monthPopupPrevYear(){
   renderMonthPopup();
 }
 function monthPopupNextYear(){monthPopupY++;renderMonthPopup();}
-function selectMonth(iso){setFieldIso(activeFieldId,iso);closeAllPopups();}
-function clearMonthField(){setFieldIso(activeFieldId,'');closeAllPopups();}
+function selectMonth(iso){
+  setFieldIso(activeFieldId,iso);
+  closeAllPopups();
+  syncPlanFieldToWorking(activeFieldId);
+}
+function clearMonthField(){
+  setFieldIso(activeFieldId,'');
+  closeAllPopups();
+  syncPlanFieldToWorking(activeFieldId);
+}
+function syncPlanFieldToWorking(fieldId){
+  const m=fieldId.match(/^wrap-plan-(short|long)-(\d+)$/);
+  if(!m)return;
+  const kind=m[1],idx=parseInt(m[2]);
+  const arr=kind==='short'?planShortWorking:planLongWorking;
+  if(arr[idx])arr[idx].month=getFieldIso(fieldId);
+}
 
 // ══════════════════════════════════════════
 // フィールド値管理（iso文字列 ↔ data属性）
@@ -684,11 +707,9 @@ function initAllDateFields(){
   buildPopupYearSelect();
   buildPopupMonthSelect();
   ['wrap-hospital-in','wrap-hospital-out'].forEach(buildDateField);
-  ['wrap-plan-short','wrap-plan-long'].forEach(buildDateField);
 }
 function clearAllDateFields(){
-  ['wrap-plan-short','wrap-plan-long',
-   'wrap-hospital-in','wrap-hospital-out'].forEach(id=>setFieldIso(id,''));
+  ['wrap-hospital-in','wrap-hospital-out'].forEach(id=>setFieldIso(id,''));
   setBirthFromIso('');
 }
 
@@ -700,6 +721,59 @@ function clearAllDateFields(){
 // ══════════════════════════════════════════
 let certHistoryWorking=[]; // 編集中の認定期間履歴（配列）
 
+// ══════════════════════════════════════════
+// プラン更新月履歴の管理（短期・長期目標）
+// ══════════════════════════════════════════
+let planShortWorking=[]; // [{month:'2026-07'}]
+let planLongWorking=[];
+
+function addPlanMonth(kind){
+  (kind==='short'?planShortWorking:planLongWorking).push({month:''});
+  renderPlanHistoryList(kind);
+}
+function removePlanMonth(kind,idx){
+  (kind==='short'?planShortWorking:planLongWorking).splice(idx,1);
+  renderPlanHistoryList(kind);
+}
+function renderPlanHistoryList(kind){
+  const arr=kind==='short'?planShortWorking:planLongWorking;
+  const container=document.getElementById('plan-'+kind+'-history-list');
+  if(!arr.length){
+    container.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0">未登録</div>';
+    return;
+  }
+  const sorted=arr.map((c,i)=>({...c,_idx:i})).sort((a,b)=>(a.month||'').localeCompare(b.month||''));
+  container.innerHTML=sorted.map(c=>{
+    const i=c._idx;
+    return`<div style="display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;background:var(--surface2)">
+      <div class="date-input-wrap month-wrap" id="wrap-plan-${kind}-${i}" style="flex:1"></div>
+      <button type="button" onclick="removePlanMonth('${kind}',${i})" style="border:none;background:none;cursor:pointer;color:var(--red);flex-shrink:0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+  arr.forEach((c,i)=>{
+    buildDateField('wrap-plan-'+kind+'-'+i);
+    setFieldIso('wrap-plan-'+kind+'-'+i,c.month||'');
+  });
+}
+
+// 指定した年月時点で対象となるプラン更新月を取得
+function getPlanMonthForView(history,year,month){
+  if(!history||!history.length)return'';
+  const viewKey=year*12+month;
+  const sorted=[...history].filter(h=>h.month).sort((a,b)=>a.month.localeCompare(b.month));
+  if(!sorted.length)return'';
+  let best=null;
+  sorted.forEach(h=>{
+    const[y,m]=h.month.split('-').map(Number);
+    const hKey=y*12+m;
+    if(hKey<=viewKey)best=h;
+  });
+  if(best)return best.month;
+  return sorted[0].month;
+}
+
 function calcUpdateApplyFromEnd(endIso){
   if(!endIso)return'';
   const d=new Date(endIso);
@@ -709,7 +783,7 @@ function calcUpdateApplyFromEnd(endIso){
 }
 
 function addCertPeriod(){
-  certHistoryWorking.push({certStart:'',certEnd:'',updateApply:''});
+  certHistoryWorking.push({certStart:'',certEnd:'',updateApply:'',kaigo:''});
   renderCertHistoryList();
 }
 function removeCertPeriod(idx){
@@ -753,6 +827,14 @@ function renderCertHistoryList(){
       <div class="form-grid">
         <div class="form-row"><label>開始日</label><div class="date-input-wrap" id="wrap-cert-start-${i}"></div></div>
         <div class="form-row"><label>終了日</label><div class="date-input-wrap" id="wrap-cert-end-${i}"></div></div>
+        <div class="form-row" style="grid-column:1/-1">
+          <label>この期間の要介護度</label>
+          <select id="f-cert-kaigo-${i}" onchange="onCertPeriodKaigoChange(${i})">
+            <option value="">-</option><option>要介護1</option><option>要介護2</option><option>要介護3</option>
+            <option>要介護4</option><option>要介護5</option><option>要支援1</option><option>要支援2</option>
+            <option>事業対象者</option><option>申請中</option>
+          </select>
+        </div>
       </div>
       <div style="font-size:12px;color:var(--blue);margin-top:6px" data-apply-label="${i}">更新申請月：${c.updateApply?toWarekiMonthStr(c.updateApply):'-'}</div>
     </div>`;
@@ -763,7 +845,12 @@ function renderCertHistoryList(){
     buildDateField('wrap-cert-end-'+i);
     setFieldIso('wrap-cert-start-'+i,c.certStart||'');
     setFieldIso('wrap-cert-end-'+i,c.certEnd||'');
+    const kaigoSel=document.getElementById('f-cert-kaigo-'+i);
+    if(kaigoSel)kaigoSel.value=c.kaigo||'';
   });
+}
+function onCertPeriodKaigoChange(idx){
+  certHistoryWorking[idx].kaigo=document.getElementById('f-cert-kaigo-'+idx).value;
 }
 
 // ══════════════════════════════════════════
@@ -819,6 +906,11 @@ function getCurrentCert(u){
   const now=new Date();
   return getCertForMonth(u,now.getFullYear(),now.getMonth()+1);
 }
+// 指定した年月時点の介護度を取得（認定期間履歴に紐づく）
+function getKaigoForMonth(u,year,month){
+  const cert=getCertForMonth(u,year,month);
+  return cert?cert.kaigo||'':'';
+}
 
 function getKaigoBadgeClass(kaigo){
   if(!kaigo)return'badge-gray';
@@ -841,10 +933,11 @@ function getRowHlClass(u){
     if(diff===0)return'hl-blue';
     if(diff===1)return'hl-yellow';
   }
-  const hasPlan=['planShort','planLong'].some(f=>{
-    if(!u[f])return false;
-    const[y,m]=u[f].split('-').map(Number);
-    const diff=(y*12+m)-(currentYear*12+currentMonth);
+  const hasPlan=[u.planShortHistory,u.planLongHistory].some(hist=>{
+    const m=getPlanMonthForView(hist,currentYear,currentMonth);
+    if(!m)return false;
+    const[y,mo]=m.split('-').map(Number);
+    const diff=(y*12+mo)-(currentYear*12+currentMonth);
     return diff>=-1&&diff<=1;
   });
   if(hasPlan)return'hl-green';
@@ -885,7 +978,12 @@ function sortUsers(users){
     const cb=getCertForMonth(b,currentYear,currentMonth);
     return((ca&&ca.certEnd)||'9999').localeCompare((cb&&cb.certEnd)||'9999');
   });
-  if(sortMode==='kaigo')return[...users].sort((a,b)=>{const oa=KAIGO_ORDER[a.kaigo]??9,ob=KAIGO_ORDER[b.kaigo]??9;if(oa!==ob)return oa-ob;return(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja');});
+  if(sortMode==='kaigo')return[...users].sort((a,b)=>{
+    const ka=getKaigoForMonth(a,currentYear,currentMonth),kb=getKaigoForMonth(b,currentYear,currentMonth);
+    const oa=KAIGO_ORDER[ka]??9,ob=KAIGO_ORDER[kb]??9;
+    if(oa!==ob)return oa-ob;
+    return(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja');
+  });
   return users;
 }
 
@@ -959,9 +1057,9 @@ function summaryCardRows(groups,field='updateApply'){
 function renderSummary(){
   const users=getUsers().filter(u=>!u.ended);
   const active=users.filter(u=>!u.inactive);
-  const kaigo=active.filter(u=>u.kaigo&&u.kaigo.startsWith('要介護')).length;
-  const yobo=active.filter(u=>u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者')).length;
-  const shinsei=active.filter(u=>u.kaigo==='申請中').length;
+  const kaigo=active.filter(u=>{const k=getKaigoForMonth(u,currentYear,currentMonth);return k&&k.startsWith('要介護')}).length;
+  const yobo=active.filter(u=>{const k=getKaigoForMonth(u,currentYear,currentMonth);return k&&(k.startsWith('要支援')||k==='事業対象者')}).length;
+  const shinsei=active.filter(u=>getKaigoForMonth(u,currentYear,currentMonth)==='申請中').length;
   const hospitalized=active.filter(u=>isCurrentlyHospitalized(u)).length;
   const md=getMonthData(currentKey());
   const monDone=active.filter(u=>md[u.id]&&md[u.id].monitoringDone).length;
@@ -969,13 +1067,11 @@ function renderSummary(){
   const applyGroups=getTimingGroups(active,'updateApply');
   const applyTotal=applyGroups.expired.length+applyGroups.lastMonth.length+applyGroups.thisMonth.length+applyGroups.nextMonth.length;
   // プラン更新：短期・長期どちらかが対象月のもの
-  const planUsers=active.filter(u=>{
-    return getUpdateBadge(u.planShort)!==''||getUpdateBadge(u.planLong)!=='';
-  });
   const planGroups={expired:[],lastMonth:[],thisMonth:[],nextMonth:[]};
   active.forEach(u=>{
-    ['planShort','planLong'].forEach(f=>{
-      const s=u[f];if(!s)return;
+    [u.planShortHistory,u.planLongHistory].forEach(hist=>{
+      const s=getPlanMonthForView(hist,currentYear,currentMonth);
+      if(!s)return;
       const[y,m]=s.split('-').map(Number);
       const diff=(y*12+m)-(currentYear*12+currentMonth);
       if(diff===-1&&!planGroups.lastMonth.find(x=>x.id===u.id))planGroups.lastMonth.push(u);
@@ -1029,8 +1125,8 @@ function renderSummary(){
 // ══════════════════════════════════════════
 function updateTabCounts(){
   const all=getUsers().filter(u=>!u.ended&&!u.inactive);
-  const kaigo=all.filter(u=>u.kaigo&&u.kaigo.startsWith('要介護'));
-  const yobo=all.filter(u=>u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者'||u.kaigo==='申請中'));
+  const kaigo=all.filter(u=>{const k=getKaigoForMonth(u,currentYear,currentMonth);return k&&k.startsWith('要介護')});
+  const yobo=all.filter(u=>{const k=getKaigoForMonth(u,currentYear,currentMonth);return k&&(k.startsWith('要支援')||k==='事業対象者'||k==='申請中')});
   const zaitaku=all.filter(u=>!u.facility);
   const shisetsu=all.filter(u=>u.facility);
   const tabs=[
@@ -1053,11 +1149,11 @@ function renderTable(){
   const fm=document.getElementById('filter-mon').value;
   const fn=document.getElementById('filter-name').value.trim();
   if(listTab==='all')users=users.filter(u=>!u.ended&&!u.inactive);
-  else if(listTab==='kaigo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&u.kaigo.startsWith('要介護'));
-  else if(listTab==='yobo')users=users.filter(u=>!u.ended&&!u.inactive&&u.kaigo&&(u.kaigo.startsWith('要支援')||u.kaigo==='事業対象者'||u.kaigo==='申請中'));
+  else if(listTab==='kaigo')users=users.filter(u=>{if(u.ended||u.inactive)return false;const k=getKaigoForMonth(u,currentYear,currentMonth);return k&&k.startsWith('要介護')});
+  else if(listTab==='yobo')users=users.filter(u=>{if(u.ended||u.inactive)return false;const k=getKaigoForMonth(u,currentYear,currentMonth);return k&&(k.startsWith('要支援')||k==='事業対象者'||k==='申請中')});
   else if(listTab==='zaitaku')users=users.filter(u=>!u.ended&&!u.inactive&&!u.facility);
   else if(listTab==='shisetsu')users=users.filter(u=>!u.ended&&!u.inactive&&u.facility);
-  if(fk)users=users.filter(u=>u.kaigo===fk);
+  if(fk)users=users.filter(u=>getKaigoForMonth(u,currentYear,currentMonth)===fk);
   if(fm)users=users.filter(u=>md[u.id]&&md[u.id].monitoringDone===(fm==='済'));
   if(fn)users=users.filter(u=>(u.name&&u.name.includes(fn))||(u.kana&&u.kana.includes(fn)));
 
@@ -1094,6 +1190,21 @@ function renderTable(){
   }
 }
 
+// プラン更新月セルを構築（対象月＋チェック状態を年月キーで保存）
+function buildPlanCell(u,mon,kind,label){
+  const hist=kind==='short'?u.planShortHistory:u.planLongHistory;
+  const planMonth=getPlanMonthForView(hist,currentYear,currentMonth);
+  if(!planMonth)return`${label}：-`;
+  const badge=getUpdateBadge(planMonth);
+  const checkKey=kind+'Check'; // その更新月自体のmonthlyデータに保存するキー
+  const planMonthData=getMonthData(planMonth)[u.id]||{};
+  const checked=!!planMonthData[checkKey];
+  return`<label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;${checked?'text-decoration:line-through;color:var(--text3)':''}">
+    <input type="checkbox" ${checked?'checked':''} onchange="setPlanCheck('${u.id}','${checkKey}','${planMonth}',this.checked)" style="width:13px;height:13px;cursor:pointer">
+    ${label}：${toWarekiMonthStr(planMonth)} ${badge}
+  </label>`;
+}
+
 function buildUserRow(u,mon){
   const cert=getCertForMonth(u,currentYear,currentMonth)||{};
   let certBadge='';
@@ -1113,7 +1224,7 @@ function buildUserRow(u,mon){
       ${u.kana?`<br><span style="font-size:11px;color:var(--text3)">${u.kana}</span>`:''}
     </td>
     <td>
-      <span class="badge ${getKaigoBadgeClass(u.kaigo)}">${u.kaigo||'-'}</span>
+      <span class="badge ${getKaigoBadgeClass(cert.kaigo)}">${cert.kaigo||'-'}</span>
       ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
     </td>
     <td style="font-size:13px;line-height:1.8">
@@ -1121,8 +1232,8 @@ function buildUserRow(u,mon){
     </td>
     <td style="font-size:13px">${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>${getUpdateBadge(cert.updateApply)}</td>
     <td style="font-size:12px;line-height:1.8">
-      ${u.planShort?'短：'+toWarekiMonthStr(u.planShort):'短：-'} ${getUpdateBadge(u.planShort)}<br>
-      ${u.planLong?'長：'+toWarekiMonthStr(u.planLong):'長：-'} ${getUpdateBadge(u.planLong)}
+      ${buildPlanCell(u,mon,'short','短')}<br>
+      ${buildPlanCell(u,mon,'long','長')}
     </td>
     <td>${facilityBadge}</td>
     <td style="text-align:center">
@@ -1159,6 +1270,11 @@ function buildUserRow(u,mon){
 // データ操作
 // ══════════════════════════════════════════
 function setMonthField(uid,key,val){setMonthData(currentKey(),uid,{[key]:val});renderSummary();}
+function setPlanCheck(uid,checkKey,planMonth,val){
+  // チェックは「その更新月自体」のmonthlyデータに保存（見ている月に関わらず固定）
+  setMonthData(planMonth,uid,{[checkKey]:val});
+  renderSummary();renderTable();
+}
 function setStatus(id,val){
   const users=getUsers();const u=users.find(u=>u.id===id);
   if(u){u.inactive=val==='inactive';u.ended=val==='ended';saveUsers(users);renderSummary();renderTable();}
@@ -1173,7 +1289,7 @@ function deleteUser(id){
 // ══════════════════════════════════════════
 function openModal(id){
   editingId=id||null;
-  ['f-name','f-kana','f-kaigo','f-futan','f-hoken','f-memo','f-hospital-status','f-hospital-name','f-facility']
+  ['f-name','f-kana','f-futan','f-hoken','f-memo','f-hospital-status','f-hospital-name','f-facility']
     .forEach(fid=>{const el=document.getElementById(fid);if(el)el.value='';});
   document.getElementById('f-doitsu').checked=false;
   document.getElementById('f-meeting-done').checked=false;
@@ -1181,23 +1297,30 @@ function openModal(id){
   clearAllDateFields();
   certHistoryWorking=[];
   renderCertHistoryList();
+  planShortWorking=[];
+  planLongWorking=[];
+  renderPlanHistoryList('short');
+  renderPlanHistoryList('long');
   if(id){
     const u=getUsers().find(u=>u.id===id);
     const mon=getMonthData(currentKey())[id]||{};
     if(u){
       document.getElementById('f-name').value=u.name||'';
       document.getElementById('f-kana').value=u.kana||'';
-      document.getElementById('f-kaigo').value=u.kaigo||'';
       document.getElementById('f-futan').value=u.futan||'';
       document.getElementById('f-hoken').value=u.hoken||'';
       document.getElementById('f-memo').value=u.memo||'';
       setBirthFromIso(u.birth||'');
       certHistoryWorking=u.certHistory?JSON.parse(JSON.stringify(u.certHistory)):
-        // 旧データ（certStart/certEnd単体）からの移行
-        (u.certStart||u.certEnd?[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd)}]:[]);
+        // 旧データ（certStart/certEnd/kaigo単体）からの移行
+        (u.certStart||u.certEnd||u.kaigo?[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd),kaigo:u.kaigo||''}]:[]);
       renderCertHistoryList();
-      setFieldIso('wrap-plan-short',u.planShort||'');
-      setFieldIso('wrap-plan-long',u.planLong||'');
+      planShortWorking=u.planShortHistory?JSON.parse(JSON.stringify(u.planShortHistory)):
+        (u.planShort?[{month:u.planShort}]:[]);
+      planLongWorking=u.planLongHistory?JSON.parse(JSON.stringify(u.planLongHistory)):
+        (u.planLong?[{month:u.planLong}]:[]);
+      renderPlanHistoryList('short');
+      renderPlanHistoryList('long');
       document.getElementById('f-hospital-status').value=u.hospitalStatus||'';
       document.getElementById('f-hospital-name').value=u.hospitalName||'';
       document.getElementById('f-facility').value=u.facility||'';
@@ -1220,14 +1343,17 @@ function saveUser(){
   const name=document.getElementById('f-name').value.trim();
   if(!name){alert('氏名を入力してください');return;}
   // 認定期間履歴を確定（空の期間は除外）
-  const certHistory=certHistoryWorking.filter(c=>c.certStart||c.certEnd);
+  const certHistory=certHistoryWorking.filter(c=>c.certStart||c.certEnd||c.kaigo);
+  // 最新の介護度（一覧の介護度バッジ用フォールバック）
+  const latestCert=[...certHistory].sort((a,b)=>(a.certStart||'').localeCompare(b.certStart||'')).pop();
   const userData={
     name,kana:document.getElementById('f-kana').value.trim(),
     birth:getBirthIso(),
-    kaigo:document.getElementById('f-kaigo').value,futan:document.getElementById('f-futan').value,
+    kaigo:latestCert?latestCert.kaigo||'':'',futan:document.getElementById('f-futan').value,
     hoken:document.getElementById('f-hoken').value,
     certHistory,
-    planShort:getFieldIso('wrap-plan-short'),planLong:getFieldIso('wrap-plan-long'),
+    planShortHistory:planShortWorking.filter(c=>c.month),
+    planLongHistory:planLongWorking.filter(c=>c.month),
     facility:document.getElementById('f-facility').value.trim(),
     doitsu:document.getElementById('f-doitsu').checked,
     hospitalStatus:document.getElementById('f-hospital-status').value,
@@ -1303,10 +1429,12 @@ function loadBackup(e){
         if(parsed.users){
           // 旧データ（certStart/certEnd単体）をcertHistoryに移行
           const migratedUsers=parsed.users.map(u=>{
-            if(!u.certHistory&&(u.certStart||u.certEnd)){
-              u.certHistory=[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd)}];
+            if(!u.certHistory&&(u.certStart||u.certEnd||u.kaigo)){
+              u.certHistory=[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd),kaigo:u.kaigo||''}];
             }
             if(!u.certHistory)u.certHistory=[];
+            if(!u.planShortHistory)u.planShortHistory=u.planShort?[{month:u.planShort}]:[];
+            if(!u.planLongHistory)u.planLongHistory=u.planLong?[{month:u.planLong}]:[];
             return u;
           });
           saveUsers(migratedUsers);

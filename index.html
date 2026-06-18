@@ -402,7 +402,25 @@ tr.hl-green:hover td{background:#e4f2e8}
 // データ管理
 // ══════════════════════════════════════════
 const UKEY='cm_users_v4', MKEY='cm_monthly_v4';
-function getUsers(){try{return JSON.parse(localStorage.getItem(UKEY)||'[]')}catch{return[]}}
+function getUsers(){
+  let arr;
+  try{arr=JSON.parse(localStorage.getItem(UKEY)||'[]')}catch{arr=[]}
+  let changed=false;
+  arr.forEach(u=>{
+    if(!u.certHistory){
+      if(u.certStart||u.certEnd||u.kaigo){
+        u.certHistory=[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd),kaigo:u.kaigo||''}];
+      }else{
+        u.certHistory=[];
+      }
+      changed=true;
+    }
+    if(!u.planShortHistory){u.planShortHistory=u.planShort?[{month:u.planShort}]:[];changed=true;}
+    if(!u.planLongHistory){u.planLongHistory=u.planLong?[{month:u.planLong}]:[];changed=true;}
+  });
+  if(changed)localStorage.setItem(UKEY,JSON.stringify(arr));
+  return arr;
+}
 function saveUsers(u){localStorage.setItem(UKEY,JSON.stringify(u))}
 function getMonthly(){try{return JSON.parse(localStorage.getItem(MKEY)||'{}')}catch{return{}}}
 function saveMonthly(m){localStorage.setItem(MKEY,JSON.stringify(m))}
@@ -830,9 +848,16 @@ function renderCertHistoryList(){
         <div class="form-row" style="grid-column:1/-1">
           <label>この期間の要介護度</label>
           <select id="f-cert-kaigo-${i}" onchange="onCertPeriodKaigoChange(${i})">
-            <option value="">-</option><option>要介護1</option><option>要介護2</option><option>要介護3</option>
-            <option>要介護4</option><option>要介護5</option><option>要支援1</option><option>要支援2</option>
-            <option>事業対象者</option><option>申請中</option>
+            <option value="">-</option>
+            <option value="要介護1">要介護1</option>
+            <option value="要介護2">要介護2</option>
+            <option value="要介護3">要介護3</option>
+            <option value="要介護4">要介護4</option>
+            <option value="要介護5">要介護5</option>
+            <option value="要支援1">要支援1</option>
+            <option value="要支援2">要支援2</option>
+            <option value="事業対象者">事業対象者</option>
+            <option value="申請中">申請中</option>
           </select>
         </div>
       </div>
@@ -883,8 +908,15 @@ function isCurrentlyHospitalized(u){
 // 認定期間履歴から、指定した年月時点で有効な期間を取得
 // certHistory: [{certStart, certEnd, updateApply}, ...] 開始日でソートされている前提
 function getCertForMonth(u,year,month){
-  const hist=u.certHistory||[];
-  if(!hist.length)return null;
+  let hist=u.certHistory;
+  // 旧データ（certHistoryがなく、certStart/certEnd/kaigo単体で保存されている）への後方互換
+  if(!hist||!hist.length){
+    if(u.certStart||u.certEnd||u.kaigo){
+      hist=[{certStart:u.certStart||'',certEnd:u.certEnd||'',updateApply:u.updateApply||calcUpdateApplyFromEnd(u.certEnd||''),kaigo:u.kaigo||''}];
+    }else{
+      return null;
+    }
+  }
   const targetDate=new Date(year,month-1,1);
   // 開始日が targetDate 以前で、最も新しい（開始日が一番遅い）ものを選ぶ
   let best=null;
@@ -1194,15 +1226,17 @@ function renderTable(){
 function buildPlanCell(u,mon,kind,label){
   const hist=kind==='short'?u.planShortHistory:u.planLongHistory;
   const planMonth=getPlanMonthForView(hist,currentYear,currentMonth);
-  if(!planMonth)return`${label}：-`;
+  if(!planMonth)return`<div style="white-space:nowrap;padding:2px 0">${label}：-</div>`;
   const badge=getUpdateBadge(planMonth);
   const checkKey=kind+'Check'; // その更新月自体のmonthlyデータに保存するキー
   const planMonthData=getMonthData(planMonth)[u.id]||{};
   const checked=!!planMonthData[checkKey];
-  return`<label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;${checked?'text-decoration:line-through;color:var(--text3)':''}">
-    <input type="checkbox" ${checked?'checked':''} onchange="setPlanCheck('${u.id}','${checkKey}','${planMonth}',this.checked)" style="width:13px;height:13px;cursor:pointer">
-    ${label}：${toWarekiMonthStr(planMonth)} ${badge}
-  </label>`;
+  return`<div style="white-space:nowrap;padding:2px 0">
+    <label title="チェックを入れると対応済として記録されます" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;${checked?'text-decoration:line-through;color:var(--text3)':''}">
+      <input type="checkbox" ${checked?'checked':''} onchange="setPlanCheck('${u.id}','${checkKey}','${planMonth}',this.checked)" style="width:13px;height:13px;cursor:pointer;flex-shrink:0">
+      <span>${label}：${toWarekiMonthStr(planMonth)} ${badge}</span>
+    </label>
+  </div>`;
 }
 
 function buildUserRow(u,mon){
@@ -1232,8 +1266,8 @@ function buildUserRow(u,mon){
     </td>
     <td style="font-size:13px">${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>${getUpdateBadge(cert.updateApply)}</td>
     <td style="font-size:12px;line-height:1.8">
-      ${buildPlanCell(u,mon,'short','短')}<br>
-      ${buildPlanCell(u,mon,'long','長')}
+      <div>${buildPlanCell(u,mon,'short','短')}</div>
+      <div>${buildPlanCell(u,mon,'long','長')}</div>
     </td>
     <td>${facilityBadge}</td>
     <td style="text-align:center">

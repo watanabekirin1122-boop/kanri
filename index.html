@@ -71,7 +71,7 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafaf8}
 tr.inactive td{color:var(--text3);background:#faf9f7}
-.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:700}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
 .badge-yellow{background:var(--amber-light);color:var(--amber)}
 .badge-blue{background:var(--blue-light);color:var(--blue)}
 .badge-red{background:var(--red-light);color:var(--red)}
@@ -1261,10 +1261,10 @@ function buildUserRow(u,mon){
       <span class="badge ${getKaigoBadgeClass(cert.kaigo)}">${cert.kaigo||'-'}</span>
       ${u.futan?`<br><span style="font-size:12px;color:var(--text3)">${u.futan}</span>`:''}
     </td>
-    <td style="font-size:13px;line-height:1.8">
+    <td style="font-size:13px;line-height:1.8;white-space:nowrap">
       ${toWarekiStr(cert.certStart)}<br>${toWarekiStr(cert.certEnd)}${certBadge}
     </td>
-    <td style="font-size:13px">${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>${getUpdateBadge(cert.updateApply)}</td>
+    <td style="font-size:13px;white-space:nowrap">${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>${getUpdateBadge(cert.updateApply)}</td>
     <td style="font-size:12px;line-height:1.8">
       <div>${buildPlanCell(u,mon,'short','短')}</div>
       <div>${buildPlanCell(u,mon,'long','長')}</div>

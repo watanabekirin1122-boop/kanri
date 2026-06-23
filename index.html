@@ -777,19 +777,20 @@ function renderPlanHistoryList(kind){
 }
 
 // 指定した年月時点で対象となるプラン更新月を取得
+// 優先順位：①見ている月以降で最も近い月 → ②それがなければ最も新しい過去の月
 function getPlanMonthForView(history,year,month){
   if(!history||!history.length)return'';
   const viewKey=year*12+month;
   const sorted=[...history].filter(h=>h.month).sort((a,b)=>a.month.localeCompare(b.month));
   if(!sorted.length)return'';
-  let best=null;
-  sorted.forEach(h=>{
+  // ①見ている月以降（今月含む）で一番近い未来・現在のものを探す
+  const futureOrCurrent=sorted.filter(h=>{
     const[y,m]=h.month.split('-').map(Number);
-    const hKey=y*12+m;
-    if(hKey<=viewKey)best=h;
+    return y*12+m>=viewKey;
   });
-  if(best)return best.month;
-  return sorted[0].month;
+  if(futureOrCurrent.length)return futureOrCurrent[0].month;
+  // ②すべて過去なら一番新しいもの（最後のもの）
+  return sorted[sorted.length-1].month;
 }
 
 function calcUpdateApplyFromEnd(endIso){

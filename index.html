@@ -23,6 +23,11 @@ body{font-family:'Noto Sans JP',sans-serif;font-size:15px;color:var(--text);back
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
 .topbar-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:7px}
 .topbar-title svg{color:var(--blue)}
+.clock-wrap{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;margin-left:8px}
+.clock-date{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.04em}
+.clock-time{font-size:22px;font-weight:700;color:var(--text);letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.clock-time span.colon{animation:blink 1s step-end infinite;color:var(--blue)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
 .month-nav{display:flex;align-items:center;gap:6px;margin-left:auto}
 .month-nav button{width:32px;height:32px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);cursor:pointer;color:var(--text2);font-size:20px;display:flex;align-items:center;justify-content:center}
 .month-nav button:hover{background:var(--surface2)}
@@ -189,6 +194,10 @@ tr.hl-green:hover td{background:#e4f2e8}
   <div class="topbar-title">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
     利用者管理表
+  </div>
+  <div class="clock-wrap">
+    <div class="clock-date" id="clock-date"></div>
+    <div class="clock-time" id="clock-time"></div>
   </div>
   <div class="month-nav">
     <button onclick="changeMonth(-1)">‹</button>
@@ -980,6 +989,35 @@ function getRowHlClass(u){
 // ══════════════════════════════════════════
 // 月ナビ
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// 時計
+// ══════════════════════════════════════════
+function updateClock(){
+  const now=new Date();
+  const y=now.getFullYear(),m=now.getMonth()+1,d=now.getDate();
+  const h=now.getHours(),min=now.getMinutes();
+  // 和暦
+  let era,n;
+  if(y>=2019){era='令和';n=y-2018;}
+  else{era='平成';n=y-1988;}
+  const dow=['日','月','火','水','木','金','土'][now.getDay()];
+  document.getElementById('clock-date').textContent=`${era}${n}年${m}月${d}日（${dow}）`;
+  document.getElementById('clock-time').innerHTML=
+    `${String(h).padStart(2,'0')}<span class="colon">:</span>${String(min).padStart(2,'0')}`;
+}
+
+// 更新可能日（認定終了日の60日前）を計算
+function calcRenewableDate(certEnd){
+  if(!certEnd)return'';
+  const d=new Date(certEnd);
+  d.setDate(d.getDate()-60);
+  const y=d.getFullYear(),m=d.getMonth()+1,day=d.getDate();
+  let era,n;
+  if(y>=2019){era='令和';n=y-2018;}
+  else{era='平成';n=y-1988;}
+  return`${era}${n}年${m}月${day}日`;
+}
+
 function updateMonthLabel(){
   document.getElementById('month-label').textContent=warekiLabel(currentYear).replace('年','')+currentYear+'年'.replace(warekiLabel(currentYear),'').slice(-1)+currentMonth+'月';
   // シンプルに
@@ -1265,7 +1303,11 @@ function buildUserRow(u,mon){
     <td style="font-size:13px;line-height:1.8;white-space:nowrap">
       ${toWarekiStr(cert.certStart)}<br>${toWarekiStr(cert.certEnd)}${certBadge}
     </td>
-    <td style="font-size:13px;white-space:nowrap">${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>${getUpdateBadge(cert.updateApply)}</td>
+    <td style="font-size:13px;white-space:nowrap">
+      ${cert.updateApply?toWarekiMonthStr(cert.updateApply):'-'}<br>
+      ${getUpdateBadge(cert.updateApply)}
+      ${cert.certEnd?`<div style="font-size:11px;color:var(--text3);margin-top:3px">更新可能日：${calcRenewableDate(cert.certEnd)}</div>`:''}
+    </td>
     <td style="font-size:12px;line-height:1.8">
       <div>${buildPlanCell(u,mon,'short','短')}</div>
       <div>${buildPlanCell(u,mon,'long','長')}</div>
@@ -1489,6 +1531,8 @@ function loadBackup(e){
 // ══════════════════════════════════════════
 initAllDateFields();
 updateMonthLabel();
+updateClock();
+setInterval(updateClock,1000);
 renderSummary();
 renderTable();
 </script>
